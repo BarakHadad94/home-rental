@@ -1,0 +1,122 @@
+# Home Rental Website
+
+A full-stack web application for managing apartment rentals, built to showcase modern development skills and help family business.
+
+## 🎯 Project Goals
+
+- **Personal Development**: Improve CV and technical skills for job market
+- **Family Business**: Help parents manage their Airbnb apartment more efficiently
+- **Cost Reduction**: Provide cheaper alternative to Airbnb with lower commissions
+- **Skill Showcase**: Demonstrate full-stack development capabilities
+
+## 🛠 Tech Stack
+
+### Backend
+- **Language**: Python
+- **Framework**: FastAPI
+- **Database**: PostgreSQL (planned)
+- **ORM**: SQLAlchemy (planned)
+- **Additional Features**: Weather APIs, trip suggestions, AI agents (planned)
+
+### Frontend
+- **Framework**: React (planned)
+- **Deployment**: GitHub Pages (free hosting)
+
+### DevOps & Tools
+- **Containerization**: Docker (planned)
+- **Version Control**: Git/GitHub
+- **Security**: Authentication & authorization (final phase)
+
+## 📁 Project Structure
+
+home-rental/
+├── .gitignore # Git ignore rules
+├── README.md # This file
+└── backend/
+├── main.py # FastAPI application entry point
+└── requirements.txt # Python dependencies
+
+
+## 🚀 Current Status
+
+### ✅ Completed
+- Basic FastAPI backend setup
+- Health check endpoint (`/health`)
+- Welcome endpoint (`/`)
+- Project structure and Git configuration
+
+### �� In Progress
+- Backend API development
+
+### 📋 Next Steps
+1. **Database Setup**: PostgreSQL connection and models
+2. **Core API Endpoints**: 
+   - Apartment information
+   - Reservation management
+   - Date availability checking
+3. **Frontend Development**: React application
+4. **Advanced Features**: Weather data, trip suggestions
+5. **Deployment**: GitHub Pages setup
+6. **Docker**: Containerization
+7. **Security**: Authentication system
+
+## ��‍♂️ Getting Started
+
+### Prerequisites
+- Python 3.8+
+- pip (Python package manager)
+
+### Backend Setup
+```bash
+cd backend
+pip install -r requirements.txt
+python main.py
+```
+
+### Test the API
+- Main endpoint: http://localhost:8000/
+- Health check: http://localhost:8000/health
+- API docs: http://localhost:8000/docs
+
+## �� Features Planned
+
+### Core Features
+- Apartment listing and details
+- Reservation system (date selection)
+- Availability calendar
+- Contact form for bookings
+
+### Advanced Features
+- Weather information for different seasons
+- Local restaurant and activity suggestions
+- Returning customer discounts
+- Multi-language support
+- Mobile-responsive design
+
+### Technical Features
+- RESTful API design
+- Database optimization
+- Error handling and logging
+- Automated testing
+- CI/CD pipeline
+
+## 🎯 Learning Objectives
+
+This project will demonstrate:
+- **Backend Development**: FastAPI, database design, API development
+- **Frontend Development**: React, modern UI/UX
+- **DevOps**: Docker, deployment, CI/CD
+- **Database**: PostgreSQL, data modeling
+- **Security**: Authentication, authorization
+- **Real-world Problem Solving**: Business requirements to technical solutions
+
+## �� Notes
+
+- All tools and hosting will be free where possible
+- Focus on learning and skill development
+- Build incrementally, starting with MVP
+- Document everything for portfolio presentation
+
+---
+
+*Last updated: [Current Date]*
