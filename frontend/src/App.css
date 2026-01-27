@@ -1,0 +1,268 @@
+#root {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 2rem;
+  text-align: center;
+}
+
+.logo {
+  height: 6em;
+  padding: 1.5em;
+  will-change: filter;
+  transition: filter 300ms;
+}
+.logo:hover {
+  filter: drop-shadow(0 0 2em #646cffaa);
+}
+.logo.react:hover {
+  filter: drop-shadow(0 0 2em #61dafbaa);
+}
+
+@keyframes logo-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  a:nth-of-type(2) .logo {
+    animation: logo-spin infinite 20s linear;
+  }
+}
+
+.card {
+  padding: 2em;
+}
+
+.read-the-docs {
+  color: #888;
+}
+
+/* Navbar Styles */
+nav {
+  background-color: #f4f4f4;
+  padding: 1rem;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+nav ul {
+  list-style-type: none;
+  display: flex;
+  justify-content: center;
+  margin: 0;
+  padding: 0;
+}
+
+nav ul li {
+  margin: 0 1rem;
+}
+
+nav ul li a {
+  text-decoration: none;
+  color: #333;
+  font-weight: bold;
+  transition: color 0.3s ease;
+}
+
+nav ul li a:hover {
+  color: #007bff;
+}
+
+/* Reservation Admin Styles */
+.reservation-admin {
+  max-width: 1200px;
+  margin: 2rem auto;
+  padding: 1rem;
+  background-color: #fff;
+  box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+}
+
+.reservation-admin h1 {
+  text-align: center;
+  color: #333;
+  margin-bottom: 1.5rem;
+}
+
+.reservation-admin table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.reservation-admin th, 
+.reservation-admin td {
+  border: 1px solid #ddd;
+  padding: 0.75rem;
+  text-align: left;
+}
+
+.reservation-admin th {
+  background-color: #f4f4f4;
+  font-weight: bold;
+}
+
+.reservation-admin button {
+  background-color: #007bff;
+  color: white;
+  border: none;
+  padding: 0.5rem 1rem;
+  margin: 0.25rem;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: background-color 0.3s ease;
+}
+
+.reservation-admin button:hover {
+  background-color: #0056b3;
+}
+
+.reservation-admin button:disabled {
+  background-color: #cccccc;
+  cursor: not-allowed;
+}
+
+/* Admin Login Styles */
+.admin-login {
+  max-width: 400px;
+  margin: 2rem auto;
+  padding: 2rem;
+  background-color: #f9f9f9;
+  border-radius: 8px;
+  box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+  text-align: center;
+}
+
+.admin-login h2 {
+  margin-bottom: 1.5rem;
+  color: #333;
+}
+
+.admin-login form {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.admin-login input {
+  padding: 0.75rem;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 1rem;
+}
+
+.admin-login button {
+  background-color: #007bff;
+  color: white;
+  border: none;
+  padding: 0.75rem;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+
+.admin-login button:hover {
+  background-color: #0056b3;
+}
+
+/* Reservation Filters */
+.reservation-filters {
+  margin-bottom: 1rem;
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+}
+
+.reservation-filters label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.reservation-filters select {
+  padding: 0.5rem;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+}
+
+/* Reservation Modal */
+.reservation-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: flex-start;
+  align-items: center;
+  z-index: 1000;
+}
+
+.reservation-modal {
+  background-color: white;
+  padding: 2rem;
+  border-radius: 8px;
+  width: 90%;
+  max-width: 600px;
+  max-height: 80%;
+  overflow-y: auto;
+  box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+}
+
+.reservation-modal h2 {
+  margin-bottom: 1.5rem;
+  text-align: center;
+  color: #333;
+  border-bottom: 1px solid #eee;
+  padding-bottom: 1rem;
+}
+
+.reservation-details {
+  margin-bottom: 1.5rem;
+}
+
+.reservation-details p {
+  margin: 0.5rem 0;
+  display: flex;
+  justify-content: space-between;
+}
+
+.reservation-details p strong {
+  margin-right: 1rem;
+  min-width: 150px;
+}
+
+.reservation-modal-actions {
+  display: flex;
+  justify-content: center;
+  gap: 1rem;
+}
+
+.reservation-modal-actions button {
+  padding: 0.5rem 1rem;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+
+.reservation-modal-actions button:nth-child(1) {
+  background-color: #28a745;
+  color: white;
+}
+
+.reservation-modal-actions button:nth-child(2) {
+  background-color: #dc3545;
+  color: white;
+}
+
+.reservation-modal-actions button:last-child {
+  background-color: #6c757d;
+  color: white;
+}
+
+.reservation-modal-actions button:hover {
+  opacity: 0.9;
+}
