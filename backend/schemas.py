@@ -135,20 +135,3 @@ class Reservation(ReservationBase):
 
     class Config:
         from_attributes = True
-
-
-# Date Block Schemas
-class DateBlockBase(BaseModel):
-    start_date: date
-    end_date: date
-    reason: str
-    block_type: str
-
-class DateBlockCreate(DateBlockBase):
-    pass
-
-class DateBlock(DateBlockBase):
-    id: int
-    
-    class Config:
-        from_attributes = True

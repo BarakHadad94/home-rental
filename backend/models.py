@@ -44,16 +44,6 @@ class Reservation(Base):
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
 
-class DateBlock(Base):
-    __tablename__ = "date_blocks"
-
-    id = Column(Integer, primary_key=True, index=True)
-    start_date = Column(Date, nullable=False)
-    end_date = Column(Date, nullable=False)
-    reason = Column(String(255), nullable=False)
-    block_type = Column(String(50), nullable=False)  # reservation, maintenance, personal_use, holiday
-
-
 class Photo(Base):
     __tablename__ = "photos"
 

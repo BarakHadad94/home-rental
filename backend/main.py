@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import text
 from typing import Optional, List
 from database import create_tables, get_db
-from models import Settings, Photo, Reservation, DateBlock, User
+from models import Settings, Photo, Reservation, User
 import schemas
 import os
 import shutil
@@ -67,15 +67,13 @@ def test_database(db: Session = Depends(get_db)):
         settings_count = db.query(Settings).count()
         reservations_count = db.query(Reservation).count()
         photos_count = db.query(Photo).count()
-        date_blocks_count = db.query(DateBlock).count()
         
         return {
             "database_status": "connected",
             "tables": {
                 "settings": settings_count,
                 "reservations": reservations_count,
-                "photos": photos_count,
-                "date_blocks": date_blocks_count
+                "photos": photos_count
             }
         }
     except Exception as e:
@@ -471,12 +469,6 @@ def set_featured_photo(photo_id: int, db: Session = Depends(get_db)):
 def check_availability(check_in: date, check_out: date, db: Session = Depends(get_db)):
     """Check if specific dates are available for booking"""
     
-    # Check for overlapping date blocks
-    overlapping_blocks = db.query(DateBlock).filter(
-        DateBlock.start_date <= check_out,
-        DateBlock.end_date >= check_in
-    ).all()
-    
     # Check for overlapping reservations (exclude checkout date)
     overlapping_reservations = db.query(Reservation).filter(
         Reservation.check_in < check_out,
@@ -484,14 +476,13 @@ def check_availability(check_in: date, check_out: date, db: Session = Depends(ge
         Reservation.status.in_(["pending", "confirmed"])
     ).all()
     
-    is_available = len(overlapping_blocks) == 0 and len(overlapping_reservations) == 0
+    is_available = len(overlapping_reservations) == 0
     
     return {
         "check_in": check_in,
         "check_out": check_out,
         "is_available": is_available,
         "conflicts": {
-            "date_blocks": [{"start": block.start_date, "end": block.end_date, "reason": block.reason} for block in overlapping_blocks],
             "reservations": [{"start": res.check_in, "end": res.check_out, "guest": res.guest_name} for res in overlapping_reservations]
         }
     }
@@ -515,12 +506,6 @@ def get_availability_calendar(
         first_day = date(year, month, 1)
         last_day = date(year, month, calendar.monthrange(year, month)[1])
         
-        # Get all date blocks for this month
-        date_blocks = db.query(DateBlock).filter(
-            DateBlock.start_date <= last_day,
-            DateBlock.end_date >= first_day
-        ).all()
-        
         # Get all reservations for this month
         reservations = db.query(Reservation).filter(
             Reservation.check_in <= last_day,
@@ -533,12 +518,6 @@ def get_availability_calendar(
         current_date = first_day
         
         while current_date <= last_day:
-            # Check if date is blocked
-            is_blocked = any(
-                block.start_date <= current_date <= block.end_date 
-                for block in date_blocks
-            )
-            
             # Check if date is reserved (exclude checkout date)
             is_reserved = any(
                 res.check_in <= current_date < res.check_out 
@@ -547,8 +526,8 @@ def get_availability_calendar(
             
             availability.append({
                 "date": current_date.isoformat(),
-                "is_available": not (is_blocked or is_reserved),
-                "reason": "blocked" if is_blocked else "reserved" if is_reserved else None
+                "is_available": not is_reserved,
+                "reason": "reserved" if is_reserved else None
             })
             
             current_date += timedelta(days=1)
@@ -624,12 +603,6 @@ def create_reservation(reservation: schemas.ReservationCreate, db: Session = Dep
                 # Provide more detailed conflict information
                 conflicts = availability_check.get("conflicts", {})
                 conflict_details = []
-                
-                if conflicts.get("date_blocks"):
-                    conflict_details.extend([
-                        f"Blocked from {block['start']} to {block['end']} (Reason: {block.get('reason', 'Unknown')})"
-                        for block in conflicts.get("date_blocks", [])
-                    ])
                 
                 if conflicts.get("reservations"):
                     conflict_details.extend([
@@ -796,29 +769,6 @@ def update_reservation_status(
     return {"message": f"Reservation {reservation_id} status updated to {status}"}
 
 
-# Date Block Management Endpoints
-
-@app.post("/date-blocks", response_model=schemas.DateBlock)
-def create_date_block(date_block: schemas.DateBlockCreate, db: Session = Depends(get_db)):
-    """Create a new date block (maintenance, personal use, etc.)"""
-    db_date_block = DateBlock(**date_block.dict())
-    db.add(db_date_block)
-    db.commit()
-    db.refresh(db_date_block)
-    return db_date_block
-
-
-@app.delete("/date-blocks/{block_id}")
-def delete_date_block(block_id: int, db: Session = Depends(get_db)):
-    """Delete a date block"""
-    date_block = db.query(DateBlock).filter(DateBlock.id == block_id).first()
-    if not date_block:
-        raise HTTPException(status_code=404, detail="Date block not found")
-    
-    db.delete(date_block)
-    db.commit()
-    return {"message": "Date block deleted successfully"}
-
 # Authentication Endpoints
 @app.post("/auth/signup", response_model=schemas.UserResponse)
 def signup(user_data: schemas.UserCreate, db: Session = Depends(get_db)):
@@ -972,14 +922,6 @@ def admin_update_reservation_status(
     # If confirming a reservation (from cancelled or pending), check if dates are available
     if status == "confirmed":
         # Use the exact same availability check logic as check_availability function
-        # Check for overlapping date blocks
-        overlapping_blocks = db.query(DateBlock).filter(
-            DateBlock.start_date <= reservation.check_out,
-            DateBlock.end_date >= reservation.check_in
-        ).all()
-        
-        # Check for overlapping reservations (exclude checkout date, same as check_availability)
-        # Use the exact same logic: check_in < check_out and check_out > check_in
         overlapping_reservations = db.query(Reservation).filter(
             Reservation.check_in < reservation.check_out,
             Reservation.check_out > reservation.check_in,
@@ -987,30 +929,11 @@ def admin_update_reservation_status(
             Reservation.id != reservation_id  # Exclude the current reservation
         ).all()
         
-        # Debug: Print what we found
-        print(f"DEBUG: Checking availability for reservation {reservation_id}")
-        print(f"DEBUG: Reservation dates: {reservation.check_in} to {reservation.check_out}")
-        print(f"DEBUG: Found {len(overlapping_blocks)} overlapping blocks")
-        print(f"DEBUG: Found {len(overlapping_reservations)} overlapping reservations")
-        for res in overlapping_reservations:
-            print(f"DEBUG: Overlapping reservation {res.id}: {res.guest_name} from {res.check_in} to {res.check_out}, status={res.status}")
-        
-        # If there are conflicts, return error
-        if overlapping_blocks or overlapping_reservations:
-            conflict_details = []
-            
-            if overlapping_blocks:
-                conflict_details.extend([
-                    f"Blocked from {block.start_date} to {block.end_date} (Reason: {block.reason})"
-                    for block in overlapping_blocks
-                ])
-            
-            if overlapping_reservations:
-                conflict_details.extend([
-                    f"Reserved by {res.guest_name} from {res.check_in} to {res.check_out}"
-                    for res in overlapping_reservations
-                ])
-            
+        if overlapping_reservations:
+            conflict_details = [
+                f"Reserved by {res.guest_name} from {res.check_in} to {res.check_out}"
+                for res in overlapping_reservations
+            ]
             raise HTTPException(
                 status_code=400,
                 detail=f"Cannot confirm reservation: dates are no longer available. Conflicts: {'; '.join(conflict_details)}"
