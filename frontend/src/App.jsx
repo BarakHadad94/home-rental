@@ -265,13 +265,18 @@ function AppContent() {
   const [authIsAdmin, setAuthIsAdmin] = useState(false);
 
   useEffect(() => {
-    // Check for existing session
-    const userStr = localStorage.getItem('user');
-    const adminStr = localStorage.getItem('isAdmin');
-    if (userStr) {
-      const userData = JSON.parse(userStr);
-      setUser(userData);
-      setIsAdmin(adminStr === 'true' || userData.is_admin);
+    // First entry (new tab/window): no session yet → start logged out. Refresh: restore login from localStorage.
+    const sessionActive = sessionStorage.getItem('sessionActive');
+    if (sessionActive) {
+      const userStr = localStorage.getItem('user');
+      const adminStr = localStorage.getItem('isAdmin');
+      if (userStr) {
+        const userData = JSON.parse(userStr);
+        setUser(userData);
+        setIsAdmin(adminStr === 'true' || userData.is_admin);
+      }
+    } else {
+      sessionStorage.setItem('sessionActive', '1');
     }
   }, []);
 

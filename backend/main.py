@@ -6,14 +6,15 @@ from sqlalchemy import text
 from typing import Optional, List
 from database import create_tables, get_db
 from models import Settings, Photo, Reservation, User
+from password_utils import hash_password, verify_password
 import schemas
 import os
 import shutil
 from datetime import datetime, date, timedelta
-import smtplib
-from email.mime.text import MIMEText
-from email.mime.multipart import MIMEMultipart
 from fastapi.responses import JSONResponse
+from dotenv import load_dotenv
+
+load_dotenv()
 
 # Ensure database is created on startup
 from database import create_tables
@@ -680,65 +681,85 @@ def get_reservations(status: Optional[str] = None, db: Session = Depends(get_db)
     return reservations
 
 
-# Email configuration (replace with actual SMTP details later)
-EMAIL_SENDER = "noreply@homrental.com"
-SMTP_SERVER = "smtp.gmail.com"  # Placeholder
-SMTP_PORT = 587  # Typical for TLS
-SMTP_USERNAME = "your_email@gmail.com"  # Placeholder
-SMTP_PASSWORD = "your_password"  # Placeholder
+# Resend email configuration (use RESEND_API_KEY and optionally RESEND_FROM in .env)
+RESEND_API_KEY = os.getenv("RESEND_API_KEY")
+RESEND_FROM = os.getenv("RESEND_FROM", "Bookings <onboarding@resend.dev>")
 
-def send_confirmation_email(reservation, apartment_settings):
-    """Send a confirmation email to the guest"""
+def _fmt_date(d):
+    """Format a date as DD/MM/YYYY for emails."""
+    if d is None:
+        return ""
+    if hasattr(d, "strftime"):
+        return d.strftime("%d/%m/%Y")
+    return str(d)
+
+def _is_guest_reservation(reservation):
+    """True if this is a real guest booking (not an admin block)."""
+    return (
+        getattr(reservation, "guest_name", None) != "admin"
+        or (getattr(reservation, "email", None) or "").strip() != "admin@example.com"
+    )
+
+def _send_resend_email(to: str, subject: str, html: str) -> bool:
+    """Send one email via Resend. Returns True on success."""
+    if not RESEND_API_KEY:
+        print("RESEND_API_KEY not set; skipping email.")
+        return False
     try:
-        # Create message
-        msg = MIMEMultipart()
-        msg['From'] = EMAIL_SENDER
-        msg['To'] = reservation.email
-        msg['Subject'] = f"Reservation Confirmed - {apartment_settings.apartment_name}"
-
-        # Email body
-        body = f"""
-Dear {reservation.guest_name},
-
-Great news! Your reservation has been confirmed.
-
-Reservation Details:
-- Check-in: {reservation.check_in}
-- Check-out: {reservation.check_out}
-- Number of Guests: {reservation.guest_count}
-
-Apartment Information:
-- Name: {apartment_settings.apartment_name}
-- Address: {apartment_settings.address or 'Address details to be provided'}
-- Check-in Time: {apartment_settings.check_in_time}
-- Check-out Time: {apartment_settings.check_out_time}
-
-Special Notes:
-- Please arrive on time for check-in
-- Bring a valid ID
-- Parking information will be provided upon arrival
-
-If you have any questions, please contact us at {apartment_settings.contact_email} or {apartment_settings.contact_phone}.
-
-We look forward to hosting you!
-
-Best regards,
-{apartment_settings.apartment_name} Team
-"""
-        msg.attach(MIMEText(body, 'plain'))
-
-        # Send email (commented out for now as we'll need real SMTP details)
-        # with smtplib.SMTP(SMTP_SERVER, SMTP_PORT) as server:
-        #     server.starttls()
-        #     server.login(SMTP_USERNAME, SMTP_PASSWORD)
-        #     server.send_message(msg)
-
-        # For now, just print the email (we'll implement actual sending later)
-        print(f"Confirmation email prepared for {reservation.email}")
+        import resend
+        resend.api_key = RESEND_API_KEY
+        resend.Emails.send({
+            "from": RESEND_FROM,
+            "to": [to],
+            "subject": subject,
+            "html": html,
+        })
         return True
     except Exception as e:
-        print(f"Failed to send email: {e}")
+        print(f"Resend send failed: {e}")
         return False
+
+def send_confirmation_email(reservation, apartment_settings):
+    """Send a confirmation email to the guest via Resend (only for real guests)."""
+    if not _is_guest_reservation(reservation) or not (reservation.email or "").strip():
+        return False
+    subject = f"Reservation Confirmed - {apartment_settings.apartment_name}"
+    html = f"""
+<p>Dear {reservation.guest_name},</p>
+<p>Great news! Your reservation has been confirmed.</p>
+<p><strong>Reservation Details:</strong></p>
+<ul>
+<li>Check-in: {_fmt_date(reservation.check_in)}</li>
+<li>Check-out: {_fmt_date(reservation.check_out)}</li>
+<li>Number of Guests: {reservation.guest_count}</li>
+</ul>
+<p><strong>Apartment:</strong> {apartment_settings.apartment_name}<br>
+Address: {apartment_settings.address or 'To be provided'}<br>
+Check-in: {apartment_settings.check_in_time} | Check-out: {apartment_settings.check_out_time}</p>
+<p>If you have any questions, contact us at {apartment_settings.contact_email} or {apartment_settings.contact_phone}.</p>
+<p>We look forward to hosting you!</p>
+<p>Best regards,<br>{apartment_settings.apartment_name} Team</p>
+"""
+    return _send_resend_email(reservation.email.strip(), subject, html)
+
+def send_cancellation_email(reservation, apartment_settings):
+    """Send a cancellation email to the guest via Resend (only for real guests)."""
+    if not _is_guest_reservation(reservation) or not (reservation.email or "").strip():
+        return False
+    subject = f"Reservation Cancelled - {apartment_settings.apartment_name}"
+    html = f"""
+<p>Dear {reservation.guest_name},</p>
+<p>We regret to inform you that your reservation has been cancelled.</p>
+<p><strong>Reservation that was cancelled:</strong></p>
+<ul>
+<li>Check-in: {_fmt_date(reservation.check_in)}</li>
+<li>Check-out: {_fmt_date(reservation.check_out)}</li>
+<li>Guests: {reservation.guest_count}</li>
+</ul>
+<p>If you have any questions, please contact us at {apartment_settings.contact_email} or {apartment_settings.contact_phone}.</p>
+<p>Best regards,<br>{apartment_settings.apartment_name} Team</p>
+"""
+    return _send_resend_email(reservation.email.strip(), subject, html)
 
 # Modify the existing reservation status update endpoint
 @app.put("/reservations/{reservation_id}/status")
@@ -783,11 +804,11 @@ def signup(user_data: schemas.UserCreate, db: Session = Depends(get_db)):
     if existing_email:
         raise HTTPException(status_code=400, detail="Email already exists")
     
-    # Create new user
+    # Create new user (store hashed password only)
     db_user = User(
         username=user_data.username,
         email=user_data.email,
-        password=user_data.password  # Plain text for now
+        password=hash_password(user_data.password),
     )
     db.add(db_user)
     db.commit()
@@ -805,7 +826,7 @@ def login(credentials: schemas.UserLogin, db: Session = Depends(get_db)):
     """Login user"""
     user = db.query(User).filter(User.username == credentials.username).first()
     
-    if not user or user.password != credentials.password:
+    if not user or not verify_password(credentials.password, user.password):
         raise HTTPException(status_code=401, detail="Invalid username or password")
     
     return {
@@ -845,12 +866,12 @@ def admin_login(
     # Check if user exists and is admin
     user = db.query(User).filter(User.username == username).first()
     
-    # If admin user doesn't exist, create it
+    # If admin user doesn't exist, create it (store hashed password)
     if not user and username == "admin":
         user = User(
             username="admin",
             email="admin@example.com",
-            password="admin"  # Default password - should be changed
+            password=hash_password("admin"),
         )
         db.add(user)
         db.commit()
@@ -863,8 +884,8 @@ def admin_login(
     if user.username != "admin":
         raise HTTPException(status_code=403, detail="Admin access required")
     
-    # Verify password
-    if user.password != password:
+    # Verify password against stored hash
+    if not verify_password(password, user.password):
         raise HTTPException(status_code=401, detail="Invalid credentials")
     
     return {
@@ -945,11 +966,13 @@ def admin_update_reservation_status(
     db.commit()
     db.refresh(reservation)
     
-    # Send email if confirmed (reuse existing logic)
+    # Send appropriate email to guest (only for real bookings, not admin blocks)
     apartment_settings = db.query(Settings).first()
     if status == "confirmed":
         send_confirmation_email(reservation, apartment_settings)
-    
+    elif status == "cancelled":
+        send_cancellation_email(reservation, apartment_settings)
+
     return {"message": f"Reservation {reservation_id} status updated to {status}"}
 
 @app.put("/admin/reservations/{reservation_id}")

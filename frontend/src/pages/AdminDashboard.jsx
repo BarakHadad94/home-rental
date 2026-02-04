@@ -22,6 +22,7 @@ export default function AdminDashboard() {
   const [appliedCurrentFilter, setAppliedCurrentFilter] = useState(emptyFilter);
   const [appliedPastFilter, setAppliedPastFilter] = useState(emptyFilter);
   const [selectedReservation, setSelectedReservation] = useState(null);
+  const [confirmModal, setConfirmModal] = useState(null); // { message, onConfirm, actionType }
 
   // Fetch reservations with optional filtering
   const fetchReservations = async () => {
@@ -95,6 +96,23 @@ export default function AdminDashboard() {
 
     return { currentReservations: filteredCurrent, pastReservations: filteredPast };
   }, [baseReservations, appliedCurrentFilter, appliedPastFilter]);
+
+  // Ask for confirmation and then update reservation status
+  const handleStatusAction = (reservation, newStatus) => {
+    const guestLabel = reservation.guest_name === 'admin' ? 'this blocked date' : `${reservation.guest_name}'s booking`;
+    const message =
+      newStatus === 'confirmed'
+        ? `Are you sure you want to confirm ${guestLabel}?`
+        : `Are you sure you want to cancel ${guestLabel}?`;
+    setConfirmModal({
+      message,
+      onConfirm: () => {
+        updateReservationStatus(reservation.id, newStatus);
+        setConfirmModal(null);
+      },
+      actionType: newStatus
+    });
+  };
 
   // Update reservation status
   const updateReservationStatus = async (id, newStatus) => {
@@ -366,7 +384,7 @@ export default function AdminDashboard() {
                           <button 
                             onClick={(e) => {
                               e.stopPropagation();
-                              updateReservationStatus(reservation.id, 'confirmed');
+                              handleStatusAction(reservation, 'confirmed');
                             }}
                             style={{ marginRight: 5, backgroundColor: 'green', color: 'white' }}
                           >
@@ -377,7 +395,7 @@ export default function AdminDashboard() {
                           <button 
                             onClick={(e) => {
                               e.stopPropagation();
-                              updateReservationStatus(reservation.id, 'cancelled');
+                              handleStatusAction(reservation, 'cancelled');
                             }}
                             style={{ backgroundColor: 'red', color: 'white' }}
                           >
@@ -392,7 +410,7 @@ export default function AdminDashboard() {
                           <button 
                             onClick={(e) => {
                               e.stopPropagation();
-                              updateReservationStatus(reservation.id, 'confirmed');
+                              handleStatusAction(reservation, 'confirmed');
                             }}
                             style={{ marginRight: 5, backgroundColor: 'green', color: 'white' }}
                           >
@@ -404,7 +422,7 @@ export default function AdminDashboard() {
                           <button 
                             onClick={(e) => {
                               e.stopPropagation();
-                              updateReservationStatus(reservation.id, 'cancelled');
+                              handleStatusAction(reservation, 'cancelled');
                             }}
                             style={{ backgroundColor: 'red', color: 'white' }}
                           >
@@ -566,6 +584,69 @@ export default function AdminDashboard() {
           reservation={selectedReservation} 
           onClose={() => setSelectedReservation(null)} 
         />
+      )}
+
+      {confirmModal && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          width: '100%',
+          height: '100%',
+          backgroundColor: 'rgba(0,0,0,0.4)',
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          zIndex: 1100
+        }}>
+          <div style={{
+            backgroundColor: 'white',
+            padding: '24px 28px',
+            borderRadius: '12px',
+            boxShadow: '0 4px 20px rgba(0,0,0,0.15)',
+            maxWidth: 400,
+            textAlign: 'center'
+          }}>
+            <p style={{
+              margin: '0 0 24px 0',
+              fontSize: '16px',
+              color: '#333',
+              lineHeight: 1.5
+            }}>
+              {confirmModal.message}
+            </p>
+            <div style={{ display: 'flex', gap: 12, justifyContent: 'center' }}>
+              <button
+                onClick={() => setConfirmModal(null)}
+                style={{
+                  padding: '10px 20px',
+                  backgroundColor: '#e0e0e0',
+                  color: '#333',
+                  border: 'none',
+                  borderRadius: '8px',
+                  cursor: 'pointer',
+                  fontWeight: 500
+                }}
+              >
+                No
+              </button>
+              <button
+                onClick={confirmModal.onConfirm}
+                style={{
+                  padding: '10px 20px',
+                  backgroundColor: confirmModal.actionType === 'confirmed' ? '#4CAF50' : '#f44336',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '8px',
+                  cursor: 'pointer',
+                  fontWeight: 500
+                }}
+              >
+                Yes
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
