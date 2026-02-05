@@ -642,6 +642,12 @@ def create_reservation(reservation: schemas.ReservationCreate, db: Session = Dep
         db.commit()
         db.refresh(db_reservation)
         
+        # Notify admin by email when a new guest booking is made (not for admin blocks)
+        if not is_admin_block:
+            apartment_settings = db.query(Settings).first()
+            if apartment_settings:
+                send_new_booking_notification_to_admin(db_reservation, apartment_settings)
+        
         # For admin blocks: automatically confirm it (same as clicking Confirm button)
         if is_admin_block:
             db_reservation.status = "confirmed"
@@ -732,10 +738,12 @@ def send_confirmation_email(reservation, apartment_settings):
 <li>Check-in: {_fmt_date(reservation.check_in)}</li>
 <li>Check-out: {_fmt_date(reservation.check_out)}</li>
 <li>Number of Guests: {reservation.guest_count}</li>
+<li>Total to pay: {(reservation.total_price or 0):.0f} ILS</li>
 </ul>
 <p><strong>Apartment:</strong> {apartment_settings.apartment_name}<br>
 Address: {apartment_settings.address or 'To be provided'}<br>
 Check-in: {apartment_settings.check_in_time} | Check-out: {apartment_settings.check_out_time}</p>
+<p><strong>Payment:</strong> Payment is due in cash upon arrival (we do not accept credit cards).</p>
 <p>If you have any questions, contact us at {apartment_settings.contact_email} or {apartment_settings.contact_phone}.</p>
 <p>We look forward to hosting you!</p>
 <p>Best regards,<br>{apartment_settings.apartment_name} Team</p>
@@ -760,6 +768,30 @@ def send_cancellation_email(reservation, apartment_settings):
 <p>Best regards,<br>{apartment_settings.apartment_name} Team</p>
 """
     return _send_resend_email(reservation.email.strip(), subject, html)
+
+def send_new_booking_notification_to_admin(reservation, apartment_settings):
+    """Send an email to the admin (contact_email) when a new guest booking is made."""
+    to = (apartment_settings.contact_email or "").strip()
+    if not to:
+        return False
+    subject = f"New reservation – {apartment_settings.apartment_name}"
+    html = f"""
+<p>A new reservation has been made. Please log in to the website to confirm or cancel it.</p>
+<p><strong>Reservation details:</strong></p>
+<ul>
+<li>Guest: {reservation.guest_name}</li>
+<li>Email: {reservation.email}</li>
+<li>Phone: {reservation.phone}</li>
+<li>Check-in: {_fmt_date(reservation.check_in)}</li>
+<li>Check-out: {_fmt_date(reservation.check_out)}</li>
+<li>Guests: {reservation.guest_count}</li>
+<li>Total: {(reservation.total_price or 0):.0f} ILS</li>
+</ul>
+"""
+    if reservation.special_requests:
+        html += f"<p><strong>Special requests:</strong> {reservation.special_requests}</p>"
+    html += f"<p>Log in to your reservation management page to confirm or cancel this booking.</p>"
+    return _send_resend_email(to, subject, html)
 
 # Modify the existing reservation status update endpoint
 @app.put("/reservations/{reservation_id}/status")

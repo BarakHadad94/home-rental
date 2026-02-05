@@ -498,12 +498,9 @@ export default function Book({ user }) {
           <li><strong>1-2 guests:</strong> 500 ILS per night</li>
           <li><strong>3 guests:</strong> 600 ILS per night</li>
           <li><strong>4 guests:</strong> 700 ILS per night</li>
-          <li></li>
           <li>Friday nights: +100 ILS to each category</li>
         </ul>
-        <small>
-
-        </small>
+        <p style={{ margin: '8px 0 0 0', fontSize: '14px', color: '#555' }}><strong>Payment:</strong> Cash upon arrival (no credit cards).</p>
       </div>
 
       <p>Select your check-in and check-out dates from the calendar.</p>
