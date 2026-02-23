@@ -1,0 +1,43 @@
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    # Load RESEND_API_KEY etc. from backend/.env (same file you use when running without Docker)
+    env_file:
+      - ./backend/.env
+    # Use your local backend folder (same DB + photos as when you run without Docker)
+    volumes:
+      - ./backend:/app/backend_data
+    environment:
+      - DATABASE_URL=sqlite:////app/backend_data/home_rental.db
+      - STATIC_DIR=/app/backend_data/static
+      # RESEND_API_KEY and RESEND_FROM come from env_file (backend/.env) only;
+      # do not override with empty host vars
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health')\" || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 15s
+    restart: unless-stopped
+    networks:
+      - app
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "3000:80"
+    depends_on:
+      - backend
+    restart: unless-stopped
+    networks:
+      - app
+
+networks:
+  app:
+    driver: bridge

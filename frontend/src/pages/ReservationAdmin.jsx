@@ -18,7 +18,7 @@ const ReservationAdmin = () => {
   // Fetch reservations from backend
   const fetchReservations = async () => {
     try {
-      const response = await axios.get('http://localhost:8000/reservations');
+      const response = await axios.get('/reservations');
       setReservations(response.data);
       setLoading(false);
     } catch (err) {
@@ -30,7 +30,7 @@ const ReservationAdmin = () => {
   // Update reservation status
   const updateReservationStatus = async (reservationId, newStatus) => {
     try {
-      await axios.put(`http://localhost:8000/reservations/${reservationId}/status`, { status: newStatus });
+      await axios.put(`/reservations/${reservationId}/status`, { status: newStatus });
       // Refresh reservations after update
       fetchReservations();
       // Close the detailed view if it was open

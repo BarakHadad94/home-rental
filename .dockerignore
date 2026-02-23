@@ -1,0 +1,42 @@
+# Git
+.git
+.gitignore
+
+# Python
+__pycache__
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv
+.venv
+env
+.env
+.env.*
+
+# Node
+node_modules
+npm-debug.log*
+.npm
+
+# IDE
+.idea
+.vscode
+*.swp
+*.swo
+
+# Build outputs
+dist
+build
+*.egg-info
+.eggs
+
+# Database (don't copy local db into image - use volume)
+*.db
+*.sqlite
+*.sqlite3
+
+# Misc
+*.md
+.DS_Store
+Thumbs.db

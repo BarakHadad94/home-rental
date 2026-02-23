@@ -28,10 +28,15 @@ app = FastAPI(
     version="1.0.0"
 )
 
-# CORS configuration
+# CORS configuration (include Docker frontend URL)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],
+    allow_origins=[
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"]
@@ -41,8 +46,8 @@ app.add_middleware(
 import os
 from fastapi.staticfiles import StaticFiles
 
-# Determine the absolute path to the static directory
-STATIC_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "static")
+# Allow override for Docker (e.g. use mounted backend folder for same data as local run)
+STATIC_DIR = os.getenv("STATIC_DIR") or os.path.join(os.path.dirname(os.path.abspath(__file__)), "static")
 
 # Ensure the static directory exists
 os.makedirs(STATIC_DIR, exist_ok=True)
@@ -50,6 +55,14 @@ os.makedirs(os.path.join(STATIC_DIR, "photos"), exist_ok=True)
 
 # Mount static files for serving uploaded photos
 app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
+
+@app.on_event("startup")
+def startup_email_check():
+    k = _get_resend_key()
+    if k:
+        print("[EMAIL] RESEND_API_KEY is set; confirmation/cancel/admin emails will be sent.")
+    else:
+        print("[EMAIL] RESEND_API_KEY is NOT set; no emails will be sent. Set it in backend/.env and use env_file in docker-compose.")
 
 # Add a root endpoint for testing
 @app.get("/")
@@ -223,93 +236,115 @@ def get_apartment_settings(db: Session = Depends(get_db)):
     return settings
 
 
-# Modify photo endpoint to work with frontend
-@app.get("/api/apartment/photos", response_model=List[schemas.Photo])
+# Predefined descriptions for known photos (module-level so endpoint stays simple)
+PHOTO_DESCRIPTIONS = {
+    "20250810_173639_Living_Room.png": "Living Room",
+    "20250810_173801_Living_Room.png": "Living Room",
+    "20250810_173830_Living_Room.png": "Living Room",
+    "20250810_174646_Living_Room_&_Kitchen.png": "Living Room",
+    "20250810_174709_Kitchen.png": "Kitchen",
+    "20250810_174741_Kitchen.png": "Kitchen",
+    "20250810_174757_Bedroom_1.png": "Bedroom 1",
+    "20250810_174807_Bedroom_1.png": "Bedroom 1",
+    "20250810_174826_Bedroom_2.png": "Bedroom 2",
+    "20250810_174834_Bedroom_2.png": "Bedroom 2",
+    "20250810_174900_Bathroom.png": "Bathroom",
+    "20250810_174927_Shower.png": "Shower",
+    "20250810_174952_Garden.png": "Garden",
+    "20250810_175017_Garden.png": "Garden",
+    "20250810_175036_Garden.png": "Garden",
+    "20250810_175058_Garden.png": "Garden",
+    "20250810_175128_Roof.png": "Roof",
+    "20250810_175139_Roof.png": "Roof",
+    "20250810_175152_Roof.png": "Roof",
+}
+
+
+def _photo_to_dict(p):
+    """Convert Photo ORM to JSON-safe dict (no Pydantic, no serialization errors)."""
+    return {
+        "id": getattr(p, "id", 0),
+        "filename": (p.filename or "").strip() or "image.jpg",
+        "description": (p.description or "").strip() or "Photo",
+        "display_order": p.display_order if p.display_order is not None else 0,
+        "is_featured": bool(p.is_featured) if p.is_featured is not None else False,
+    }
+
+
+@app.get("/api/apartment/photos")
 def get_apartment_photos(db: Session = Depends(get_db)):
-    """Get all apartment photos ordered by display order"""
+    """Get all apartment photos ordered by display order. Returns plain JSON list (no schema validation)."""
     try:
-        # Predefined descriptions for known photos
-        photo_descriptions = {
-            # Living Room Photos
-            "20250810_173639_Living_Room.png": "Living Room",
-            "20250810_173801_Living_Room.png": "Living Room",
-            "20250810_173830_Living_Room.png": "Living Room",
-            "20250810_174646_Living_Room_&_Kitchen.png": "Living Room",
-            
-            # Kitchen Photos
-            "20250810_174709_Kitchen.png": "Kitchen",
-            "20250810_174741_Kitchen.png": "Kitchen",
-            
-            # Bedroom Photos
-            "20250810_174757_Bedroom_1.png": "Bedroom 1",
-            "20250810_174807_Bedroom_1.png": "Bedroom 1",
-            "20250810_174826_Bedroom_2.png": "Bedroom 2",
-            "20250810_174834_Bedroom_2.png": "Bedroom 2",
-            
-            # Bathroom Photos
-            "20250810_174900_Bathroom.png": "Bathroom",
-            "20250810_174927_Shower.png": "Shower",
-            
-            # Garden Photos
-            "20250810_174952_Garden.png": "Garden",
-            "20250810_175017_Garden.png": "Garden",
-            "20250810_175036_Garden.png": "Garden",
-            "20250810_175058_Garden.png": "Garden",
-            
-            # Roof Photos
-            "20250810_175128_Roof.png": "Roof",
-            "20250810_175139_Roof.png": "Roof",
-            "20250810_175152_Roof.png": "Roof"
-        }
-        
-        # Check existing photos in the database
         existing_photos = db.query(Photo).order_by(Photo.display_order).all()
-        
-        # If no photos or descriptions are generic, recreate
-        if not existing_photos or existing_photos[0].description.startswith("Photo "):
-            # Clear existing photos
-            db.query(Photo).delete()
-            
-            import os
-            current_dir = os.path.dirname(os.path.abspath(__file__))
-            static_photos_path = os.path.join(current_dir, "static", "photos")
-            
-            # Ensure the directory exists
-            if not os.path.exists(static_photos_path):
-                os.makedirs(static_photos_path)
-            
-            # Get photo files
-            photo_files = [f for f in os.listdir(static_photos_path) 
-                           if f.lower().endswith(('.png', '.jpg', '.jpeg', '.gif'))]
-            
-            # Sort files to ensure consistent order
-            photo_files.sort()
-            
-            # Create photo entries
-            new_photos = []
-            for idx, filename in enumerate(photo_files, 1):
-                # Use predefined description 
-                description = photo_descriptions.get(filename, f"Photo {idx}")
-                
-                photo = Photo(
-                    filename=filename, 
-                    description=description,
-                    display_order=idx
-                )
-                new_photos.append(photo)
-            
-            # Add and commit photos
-            if new_photos:
-                db.add_all(new_photos)
-                db.commit()
-                existing_photos = new_photos
-        
-        # Return photos
-        return existing_photos
-    
     except Exception as e:
-        print(f"CRITICAL ERROR in get_apartment_photos: {e}")
-        raise HTTPException(status_code=500, detail=f"Failed to retrieve photos: {str(e)}")
+        print(f"get_apartment_photos: DB query failed: {e}")
+        return []
+
+    first_desc = (existing_photos[0].description or "") if existing_photos else ""
+    need_rebuild = not existing_photos or str(first_desc).strip().startswith("Photo ")
+
+    if not need_rebuild:
+        return [_photo_to_dict(p) for p in existing_photos]
+
+    try:
+        db.query(Photo).delete()
+        db.commit()
+    except Exception as e:
+        print(f"get_apartment_photos: delete/commit failed: {e}")
+        db.rollback()
+        return [_photo_to_dict(p) for p in existing_photos] if existing_photos else []
+
+    static_photos_path = os.path.join(STATIC_DIR, "photos")
+    try:
+        if not os.path.isdir(static_photos_path):
+            os.makedirs(static_photos_path, exist_ok=True)
+        photo_files = [
+            f for f in os.listdir(static_photos_path)
+            if f.lower().endswith((".png", ".jpg", ".jpeg", ".gif"))
+        ]
+        photo_files.sort()
+    except OSError as e:
+        print(f"get_apartment_photos: cannot read dir {static_photos_path!r}: {e}")
+        return []
+
+    new_photos = []
+    for idx, filename in enumerate(photo_files, 1):
+        description = PHOTO_DESCRIPTIONS.get(filename, f"Photo {idx}")
+        new_photos.append(Photo(
+            filename=filename,
+            description=description,
+            display_order=idx,
+        ))
+    if not new_photos:
+        return []
+
+    try:
+        db.add_all(new_photos)
+        db.commit()
+        db.refresh()  # ensure ids are loaded
+        # Re-query so we have persisted objects with ids
+        ordered = db.query(Photo).order_by(Photo.display_order).all()
+        return [_photo_to_dict(p) for p in ordered]
+    except Exception as e:
+        print(f"get_apartment_photos: add_all/commit failed: {e}")
+        db.rollback()
+        return []
+
+
+@app.get("/api/apartment/photos-debug")
+def get_photos_debug():
+    """Debug: show STATIC_DIR and whether photos dir exists (for Docker path issues)."""
+    photos_path = os.path.join(STATIC_DIR, "photos")
+    try:
+        files = [f for f in os.listdir(photos_path) if f.lower().endswith((".png", ".jpg", ".jpeg", ".gif"))] if os.path.isdir(photos_path) else []
+    except OSError:
+        files = []
+    return {
+        "STATIC_DIR": STATIC_DIR,
+        "photos_path": photos_path,
+        "photos_dir_exists": os.path.isdir(photos_path),
+        "photo_file_count": len(files),
+    }
 
 
 @app.get("/apartment/photos/{photo_id}/url")
@@ -552,31 +587,24 @@ def get_availability_calendar(
 
 # Reservation Endpoints
 
-@app.post("/reservations", response_model=schemas.Reservation)
+@app.post("/reservations")
 def create_reservation(reservation: schemas.ReservationCreate, db: Session = Depends(get_db)):
-    """Create a new reservation request"""
-    
+    """Create a new reservation request. Returns plain JSON (no schema validation) to avoid 500."""
     try:
-        # Check if this is an admin block
         is_admin_block = getattr(reservation, 'is_admin_block', False) or (
-            reservation.guest_name == "admin" and 
-            reservation.guest_count == 0 and 
-            reservation.total_price == 0
+            (reservation.guest_name or "").strip() == "admin"
+            and (reservation.guest_count or 0) == 0
+            and (reservation.total_price or 0) == 0
         )
-        
+
         if is_admin_block:
-            # Admin block: minimal validation, auto-confirmed
             if reservation.check_in >= reservation.check_out:
                 raise ValueError("Check-in date must be before check-out date")
-            
-            # Validate user_id if provided (should be admin user)
             user_id = reservation.user_id
             if user_id:
                 user = db.query(User).filter(User.id == user_id).first()
                 if not user:
                     raise HTTPException(status_code=404, detail="User not found")
-            
-            # Create admin block reservation
             db_reservation = Reservation(
                 guest_name="admin",
                 email="admin@example.com",
@@ -590,89 +618,70 @@ def create_reservation(reservation: schemas.ReservationCreate, db: Session = Dep
                 user_id=user_id
             )
         else:
-            # Regular reservation: full validation
-            if not reservation.guest_name or not reservation.email or not reservation.phone:
+            if not (reservation.guest_name or "").strip() or not (reservation.email or "").strip() or not (reservation.phone or "").strip():
                 raise ValueError("Guest name, email, and phone are required")
-            
-            # Check if dates are valid
             if reservation.check_in >= reservation.check_out:
                 raise ValueError("Check-in date must be before check-out date")
-            
-            # Check if dates are available
             availability_check = check_availability(reservation.check_in, reservation.check_out, db)
             if not availability_check["is_available"]:
-                # Provide more detailed conflict information
                 conflicts = availability_check.get("conflicts", {})
                 conflict_details = []
-                
                 if conflicts.get("reservations"):
                     conflict_details.extend([
                         f"Reserved by {res['guest']} from {res['start']} to {res['end']}"
                         for res in conflicts.get("reservations", [])
                     ])
-                
                 raise HTTPException(
-                    status_code=400, 
+                    status_code=400,
                     detail=f"Selected dates are not available. Conflicts: {'; '.join(conflict_details)}"
                 )
-            
-            # Validate user_id if provided
             user_id = reservation.user_id
             if user_id:
                 user = db.query(User).filter(User.id == user_id).first()
                 if not user:
                     raise HTTPException(status_code=404, detail="User not found")
-            
-            # Create regular reservation with status="pending"
             db_reservation = Reservation(
-                guest_name=reservation.guest_name,
-                email=reservation.email,
-                phone=reservation.phone,
+                guest_name=(reservation.guest_name or "").strip(),
+                email=(reservation.email or "").strip(),
+                phone=(reservation.phone or "").strip(),
                 check_in=reservation.check_in,
                 check_out=reservation.check_out,
-                guest_count=reservation.guest_count,
+                guest_count=reservation.guest_count or 1,
                 message=reservation.message,
-                total_price=reservation.total_price,
+                total_price=reservation.total_price if reservation.total_price is not None else 0.0,
                 special_requests=reservation.special_requests,
                 status="pending",
                 user_id=user_id
             )
-        
+
         db.add(db_reservation)
         db.commit()
         db.refresh(db_reservation)
-        
-        # Notify admin by email when a new guest booking is made (not for admin blocks)
+
         if not is_admin_block:
-            apartment_settings = db.query(Settings).first()
-            if apartment_settings:
-                send_new_booking_notification_to_admin(db_reservation, apartment_settings)
-        
-        # For admin blocks: automatically confirm it (same as clicking Confirm button)
+            try:
+                apartment_settings = db.query(Settings).first()
+                if apartment_settings:
+                    send_new_booking_notification_to_admin(db_reservation, apartment_settings)
+            except Exception as email_err:
+                print(f"Reservation created but email notification failed: {email_err}")
+
         if is_admin_block:
             db_reservation.status = "confirmed"
             db_reservation.updated_at = datetime.now()
             db.commit()
             db.refresh(db_reservation)
-        
-        return db_reservation
-    
+
+        return _reservation_to_dict(db_reservation)
+
     except HTTPException:
-        # Re-raise HTTP exceptions as-is
         raise
-    
     except Exception as e:
-        # Rollback the transaction in case of any error
         db.rollback()
-        
-        # Log the full error for debugging
         print(f"Reservation creation error: {str(e)}")
-        
-        # Raise a more informative error
-        raise HTTPException(
-            status_code=500, 
-            detail=f"Failed to create reservation: {str(e)}"
-        )
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Failed to create reservation: {str(e)}")
 
 
 @app.get("/reservations", response_model=List[schemas.Reservation])
@@ -688,8 +697,14 @@ def get_reservations(status: Optional[str] = None, db: Session = Depends(get_db)
 
 
 # Resend email configuration (use RESEND_API_KEY and optionally RESEND_FROM in .env)
-RESEND_API_KEY = os.getenv("RESEND_API_KEY")
-RESEND_FROM = os.getenv("RESEND_FROM", "Bookings <onboarding@resend.dev>")
+def _get_resend_key():
+    return (os.getenv("RESEND_API_KEY") or "").strip()
+
+def _get_resend_from():
+    return (os.getenv("RESEND_FROM") or "Bookings <onboarding@resend.dev>").strip()
+
+RESEND_API_KEY = _get_resend_key()
+RESEND_FROM = _get_resend_from()
 
 def _fmt_date(d):
     """Format a date as DD/MM/YYYY for emails."""
@@ -700,125 +715,150 @@ def _fmt_date(d):
     return str(d)
 
 def _is_guest_reservation(reservation):
-    """True if this is a real guest booking (not an admin block)."""
-    return (
-        getattr(reservation, "guest_name", None) != "admin"
-        or (getattr(reservation, "email", None) or "").strip() != "admin@example.com"
-    )
+    """True if this is a real guest booking (not an admin block). No email for admin blocks."""
+    name = (getattr(reservation, "guest_name", None) or "").strip()
+    email = (getattr(reservation, "email", None) or "").strip()
+    return not (name == "admin" and email == "admin@example.com")
 
 def _send_resend_email(to: str, subject: str, html: str) -> bool:
     """Send one email via Resend. Returns True on success."""
-    if not RESEND_API_KEY:
-        print("RESEND_API_KEY not set; skipping email.")
+    api_key = _get_resend_key()
+    from_addr = _get_resend_from()
+    if not api_key:
+        print("[EMAIL] RESEND_API_KEY not set; skipping email.")
         return False
     try:
         import resend
-        resend.api_key = RESEND_API_KEY
+        resend.api_key = api_key
         resend.Emails.send({
-            "from": RESEND_FROM,
+            "from": from_addr,
             "to": [to],
             "subject": subject,
             "html": html,
         })
+        print(f"[EMAIL] Sent to {to!r}: {subject!r}")
         return True
     except Exception as e:
-        print(f"Resend send failed: {e}")
+        print(f"[EMAIL] Resend send failed: {e}")
+        import traceback
+        traceback.print_exc()
         return False
+
+def _default_settings():
+    """Minimal settings for email when none exist in DB."""
+    class D:
+        apartment_name = "Apartment"
+        address = "To be provided"
+        check_in_time = "15:00"
+        check_out_time = "11:00"
+        contact_email = "admin@example.com"
+        contact_phone = ""
+    return D()
 
 def send_confirmation_email(reservation, apartment_settings):
     """Send a confirmation email to the guest via Resend (only for real guests)."""
-    if not _is_guest_reservation(reservation) or not (reservation.email or "").strip():
+    if not _is_guest_reservation(reservation):
+        print("[EMAIL] Skipping confirmation email (admin block or not a guest reservation).")
         return False
-    subject = f"Reservation Confirmed - {apartment_settings.apartment_name}"
+    to = (getattr(reservation, "email", None) or "").strip()
+    if not to:
+        print("[EMAIL] Skipping confirmation email (no guest email).")
+        return False
+    s = apartment_settings or _default_settings()
+    subject = f"Reservation Confirmed - {s.apartment_name}"
     html = f"""
 <p>Dear {reservation.guest_name},</p>
 <p>Great news! Your reservation has been confirmed.</p>
 <p><strong>Reservation Details:</strong></p>
 <ul>
-<li>Check-in: {_fmt_date(reservation.check_in)}</li>
-<li>Check-out: {_fmt_date(reservation.check_out)}</li>
-<li>Number of Guests: {reservation.guest_count}</li>
-<li>Total to pay: {(reservation.total_price or 0):.0f} ILS</li>
+<li>Check-in: {_fmt_date(getattr(reservation, 'check_in', None))}</li>
+<li>Check-out: {_fmt_date(getattr(reservation, 'check_out', None))}</li>
+<li>Number of Guests: {getattr(reservation, 'guest_count', 1)}</li>
+<li>Total to pay: {(getattr(reservation, 'total_price', None) or 0):.0f} ILS</li>
 </ul>
-<p><strong>Apartment:</strong> {apartment_settings.apartment_name}<br>
-Address: {apartment_settings.address or 'To be provided'}<br>
-Check-in: {apartment_settings.check_in_time} | Check-out: {apartment_settings.check_out_time}</p>
+<p><strong>Apartment:</strong> {s.apartment_name}<br>
+Address: {getattr(s, 'address', None) or 'To be provided'}<br>
+Check-in: {getattr(s, 'check_in_time', '15:00')} | Check-out: {getattr(s, 'check_out_time', '11:00')}</p>
 <p><strong>Payment:</strong> Payment is due in cash upon arrival (we do not accept credit cards).</p>
-<p>If you have any questions, contact us at {apartment_settings.contact_email} or {apartment_settings.contact_phone}.</p>
+<p>If you have any questions, contact us at {getattr(s, 'contact_email', '')} or {getattr(s, 'contact_phone', '')}.</p>
 <p>We look forward to hosting you!</p>
-<p>Best regards,<br>{apartment_settings.apartment_name} Team</p>
+<p>Best regards,<br>{s.apartment_name} Team</p>
 """
-    return _send_resend_email(reservation.email.strip(), subject, html)
+    ok = _send_resend_email(to, subject, html)
+    if not ok:
+        print(f"[EMAIL] Confirmation email to {to!r} was not sent (check logs above).")
+    return ok
 
 def send_cancellation_email(reservation, apartment_settings):
     """Send a cancellation email to the guest via Resend (only for real guests)."""
-    if not _is_guest_reservation(reservation) or not (reservation.email or "").strip():
+    if not _is_guest_reservation(reservation) or not (getattr(reservation, "email", None) or "").strip():
         return False
-    subject = f"Reservation Cancelled - {apartment_settings.apartment_name}"
+    s = apartment_settings or _default_settings()
+    to = (reservation.email or "").strip()
+    subject = f"Reservation Cancelled - {s.apartment_name}"
     html = f"""
 <p>Dear {reservation.guest_name},</p>
 <p>We regret to inform you that your reservation has been cancelled.</p>
 <p><strong>Reservation that was cancelled:</strong></p>
 <ul>
-<li>Check-in: {_fmt_date(reservation.check_in)}</li>
-<li>Check-out: {_fmt_date(reservation.check_out)}</li>
-<li>Guests: {reservation.guest_count}</li>
+<li>Check-in: {_fmt_date(getattr(reservation, 'check_in', None))}</li>
+<li>Check-out: {_fmt_date(getattr(reservation, 'check_out', None))}</li>
+<li>Guests: {getattr(reservation, 'guest_count', 1)}</li>
 </ul>
-<p>If you have any questions, please contact us at {apartment_settings.contact_email} or {apartment_settings.contact_phone}.</p>
-<p>Best regards,<br>{apartment_settings.apartment_name} Team</p>
+<p>If you have any questions, please contact us at {getattr(s, 'contact_email', '')} or {getattr(s, 'contact_phone', '')}.</p>
+<p>Best regards,<br>{s.apartment_name} Team</p>
 """
-    return _send_resend_email(reservation.email.strip(), subject, html)
+    return _send_resend_email(to, subject, html)
 
 def send_new_booking_notification_to_admin(reservation, apartment_settings):
-    """Send an email to the admin (contact_email) when a new guest booking is made."""
-    to = (apartment_settings.contact_email or "").strip()
+    """Send an email to the admin when a new guest booking is made. Uses contact_email or admin@example.com."""
+    to = ""
+    if apartment_settings:
+        to = (getattr(apartment_settings, "contact_email", None) or "").strip()
     if not to:
-        return False
-    subject = f"New reservation – {apartment_settings.apartment_name}"
+        to = "admin@example.com"
+    name = getattr(apartment_settings, "apartment_name", None) or "Apartment"
+    subject = f"New reservation – {name}"
     html = f"""
 <p>A new reservation has been made. Please log in to the website to confirm or cancel it.</p>
 <p><strong>Reservation details:</strong></p>
 <ul>
-<li>Guest: {reservation.guest_name}</li>
-<li>Email: {reservation.email}</li>
-<li>Phone: {reservation.phone}</li>
-<li>Check-in: {_fmt_date(reservation.check_in)}</li>
-<li>Check-out: {_fmt_date(reservation.check_out)}</li>
-<li>Guests: {reservation.guest_count}</li>
-<li>Total: {(reservation.total_price or 0):.0f} ILS</li>
+<li>Guest: {getattr(reservation, 'guest_name', '')}</li>
+<li>Email: {getattr(reservation, 'email', '')}</li>
+<li>Phone: {getattr(reservation, 'phone', '')}</li>
+<li>Check-in: {_fmt_date(getattr(reservation, 'check_in', None))}</li>
+<li>Check-out: {_fmt_date(getattr(reservation, 'check_out', None))}</li>
+<li>Guests: {getattr(reservation, 'guest_count', 1)}</li>
+<li>Total: {(getattr(reservation, 'total_price', None) or 0):.0f} ILS</li>
 </ul>
 """
-    if reservation.special_requests:
+    if getattr(reservation, "special_requests", None):
         html += f"<p><strong>Special requests:</strong> {reservation.special_requests}</p>"
-    html += f"<p>Log in to your reservation management page to confirm or cancel this booking.</p>"
+    html += "<p>Log in to your reservation management page to confirm or cancel this booking.</p>"
     return _send_resend_email(to, subject, html)
 
-# Modify the existing reservation status update endpoint
 @app.put("/reservations/{reservation_id}/status")
 def update_reservation_status(
-    reservation_id: int, 
-    status: str, 
+    reservation_id: int,
+    status: str,
     db: Session = Depends(get_db)
 ):
-    """Update reservation status (pending/confirmed/cancelled)"""
+    """Update reservation status. Sends guest email on confirm/cancel (not for admin blocks)."""
     reservation = db.query(Reservation).filter(Reservation.id == reservation_id).first()
     if not reservation:
         raise HTTPException(status_code=404, detail="Reservation not found")
-    
     if status not in ["pending", "confirmed", "cancelled"]:
         raise HTTPException(status_code=400, detail="Invalid status")
-    
-    # Get apartment settings for email
     apartment_settings = db.query(Settings).first()
-    
-    # Update reservation status
     reservation.status = status
     db.commit()
-    
-    # Send confirmation email if status is confirmed
-    if status == "confirmed":
-        send_confirmation_email(reservation, apartment_settings)
-    
+    try:
+        if status == "confirmed":
+            send_confirmation_email(reservation, apartment_settings)
+        elif status == "cancelled":
+            send_cancellation_email(reservation, apartment_settings)
+    except Exception as e:
+        print(f"Guest email (status update) failed: {e}")
     return {"message": f"Reservation {reservation_id} status updated to {status}"}
 
 
@@ -868,15 +908,18 @@ def login(credentials: schemas.UserLogin, db: Session = Depends(get_db)):
         "is_admin": user.username == "admin"
     }
 
-@app.get("/auth/user/{user_id}/reservations", response_model=List[schemas.Reservation])
+@app.get("/auth/user/{user_id}/reservations")
 def get_user_reservations(user_id: int, db: Session = Depends(get_db)):
-    """Get all reservations for a specific user"""
+    """Get all reservations for a specific user. Returns plain JSON (no schema validation)."""
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
-    
-    reservations = db.query(Reservation).filter(Reservation.user_id == user_id).all()
-    return reservations
+    try:
+        reservations = db.query(Reservation).filter(Reservation.user_id == user_id).order_by(Reservation.created_at.desc()).all()
+        return [_reservation_to_dict(r) for r in reservations]
+    except Exception as e:
+        print(f"get_user_reservations error: {e}")
+        return []
 
 # Admin login endpoint (uses users table)
 @app.post("/admin/login")
@@ -931,29 +974,55 @@ def admin_login(
         }
     }
 
-@app.get("/admin/reservations", response_model=List[schemas.Reservation])
+def _reservation_to_dict(r):
+    """Convert Reservation ORM to JSON-safe dict (no Pydantic, no serialization errors)."""
+    def _date_str(d):
+        if d is None:
+            return None
+        if hasattr(d, "isoformat"):
+            return d.isoformat() if hasattr(d, "date") else str(d)
+        return str(d)
+    return {
+        "id": getattr(r, "id", 0),
+        "guest_name": r.guest_name if r.guest_name is not None else "",
+        "email": r.email if r.email is not None else "",
+        "phone": r.phone if r.phone is not None else "",
+        "check_in": _date_str(getattr(r, "check_in", None)),
+        "check_out": _date_str(getattr(r, "check_out", None)),
+        "guest_count": r.guest_count if r.guest_count is not None else 1,
+        "status": r.status if r.status is not None else "pending",
+        "message": r.message if r.message is not None else None,
+        "total_price": float(r.total_price) if r.total_price is not None else 0.0,
+        "special_requests": r.special_requests if r.special_requests is not None else None,
+        "user_id": r.user_id if r.user_id is not None else None,
+        "created_at": _date_str(getattr(r, "created_at", None)),
+        "updated_at": _date_str(getattr(r, "updated_at", None)),
+    }
+
+
+@app.get("/admin/reservations")
 def get_all_reservations(
     db: Session = Depends(get_db),
     status: Optional[str] = None,
     start_date: Optional[date] = None,
     end_date: Optional[date] = None
 ):
-    """Get all reservations with optional filtering"""
-    query = db.query(Reservation)
-    
-    # Filter by status if provided
-    if status:
-        query = query.filter(Reservation.status == status)
-    
-    # Filter by date range if provided
-    if start_date:
-        query = query.filter(Reservation.check_in >= start_date)
-    if end_date:
-        query = query.filter(Reservation.check_out <= end_date)
-    
-    # Order by most recent first
-    reservations = query.order_by(Reservation.created_at.desc()).all()
-    return reservations
+    """Get all reservations with optional filtering. Returns plain JSON (no schema validation)."""
+    try:
+        query = db.query(Reservation)
+        if status:
+            query = query.filter(Reservation.status == status)
+        if start_date:
+            query = query.filter(Reservation.check_in >= start_date)
+        if end_date:
+            query = query.filter(Reservation.check_out <= end_date)
+        reservations = query.order_by(Reservation.created_at.desc()).all()
+        return [_reservation_to_dict(r) for r in reservations]
+    except Exception as e:
+        print(f"get_all_reservations error: {e}")
+        import traceback
+        traceback.print_exc()
+        return []
 
 @app.put("/admin/reservations/{reservation_id}/status")
 def admin_update_reservation_status(
@@ -992,18 +1061,23 @@ def admin_update_reservation_status(
                 detail=f"Cannot confirm reservation: dates are no longer available. Conflicts: {'; '.join(conflict_details)}"
             )
     
-    # Update status
     reservation.status = status
     reservation.updated_at = datetime.now()
     db.commit()
     db.refresh(reservation)
-    
-    # Send appropriate email to guest (only for real bookings, not admin blocks)
+
     apartment_settings = db.query(Settings).first()
-    if status == "confirmed":
-        send_confirmation_email(reservation, apartment_settings)
-    elif status == "cancelled":
-        send_cancellation_email(reservation, apartment_settings)
+    try:
+        if status == "confirmed":
+            ok = send_confirmation_email(reservation, apartment_settings)
+            print(f"[EMAIL] Admin confirmed reservation {reservation_id}; confirmation email sent={ok} to {getattr(reservation, 'email', '')!r}")
+        elif status == "cancelled":
+            ok = send_cancellation_email(reservation, apartment_settings)
+            print(f"[EMAIL] Admin cancelled reservation {reservation_id}; cancellation email sent={ok} to {getattr(reservation, 'email', '')!r}")
+    except Exception as e:
+        print(f"[EMAIL] Guest email (admin status update) failed: {e}")
+        import traceback
+        traceback.print_exc()
 
     return {"message": f"Reservation {reservation_id} status updated to {status}"}
 

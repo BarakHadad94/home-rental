@@ -10,7 +10,7 @@ export default function Gallery() {
   useEffect(() => {
     const fetchPhotos = async () => {
       try {
-        const response = await axios.get('http://localhost:8000/api/apartment/photos', {
+        const response = await axios.get('/api/apartment/photos', {
           timeout: 10000
         });
         
@@ -77,7 +77,7 @@ export default function Gallery() {
             onClick={() => handlePhotoClick(index)}
           >
             <img 
-              src={`http://localhost:8000/static/photos/${photo.filename}`} 
+              src={`/static/photos/${photo.filename}`} 
               alt={photo.description}
               style={{
                 width: '100%',
@@ -215,7 +215,7 @@ export default function Gallery() {
               alignItems: 'center'
             }}>
               <img 
-                src={`http://localhost:8000/static/photos/${photos[selectedPhotoIndex].filename}`} 
+                src={`/static/photos/${photos[selectedPhotoIndex].filename}`} 
                 alt={photos[selectedPhotoIndex].description}
                 style={{
                   maxWidth: '100%',

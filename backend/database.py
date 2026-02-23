@@ -4,12 +4,19 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, Session
 from sqlalchemy.ext.declarative import declarative_base
 
-# Determine the database path
+# Determine the database path - use env var for Docker, otherwise default to local file
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DATABASE_PATH = os.path.join(BASE_DIR, "home_rental.db")
 
-# Create database URL
-DATABASE_URL = f"sqlite:///{DATABASE_PATH}"
+# Support DATABASE_URL from environment (e.g. for Docker with volume-mounted path)
+if os.getenv("DATABASE_URL"):
+    DATABASE_URL = os.getenv("DATABASE_URL")
+    # Ensure directory exists for SQLite (extract path from sqlite:///path)
+    if DATABASE_URL.startswith("sqlite:///"):
+        db_path = DATABASE_URL.replace("sqlite:///", "")
+        os.makedirs(os.path.dirname(db_path) or ".", exist_ok=True)
+else:
+    DATABASE_URL = f"sqlite:///{DATABASE_PATH}"
 
 # Create SQLAlchemy engine
 engine = create_engine(
@@ -35,7 +42,7 @@ def get_db():
 def create_tables():
     from models import Base
     Base.metadata.create_all(bind=engine)
-    print(f"Database created at: {DATABASE_PATH}")
+    print(f"Database connected: {DATABASE_URL}")
 
 # Optional: Add migration function if needed
 def migrate_database():

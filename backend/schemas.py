@@ -3,10 +3,10 @@ from typing import List, Optional
 from datetime import date, datetime
 
 
-# Photo Schemas
+# Photo Schemas (optional fields so NULL in DB doesn't cause 500)
 class PhotoBase(BaseModel):
-    filename: str
-    description: str
+    filename: Optional[str] = ""
+    description: Optional[str] = ""
     display_order: int = 0
     is_featured: bool = False
 
@@ -15,7 +15,7 @@ class PhotoCreate(PhotoBase):
 
 class Photo(PhotoBase):
     id: int
-    
+
     class Config:
         from_attributes = True
 
@@ -94,17 +94,15 @@ class UserResponse(BaseModel):
         from_attributes = True
 
 
-# Reservation Schemas
+# Reservation Schemas (optional fields so NULL in DB doesn't cause 500 on response)
 class ReservationBase(BaseModel):
-    guest_name: str
-    email: str
-    phone: str
+    guest_name: Optional[str] = None
+    email: Optional[str] = None
+    phone: Optional[str] = None
     check_in: date
     check_out: date
-    guest_count: int
+    guest_count: Optional[int] = 1
     message: Optional[str] = None
-    
-    # Ensure total_price has a default
     total_price: Optional[float] = 0.0
     special_requests: Optional[str] = None
 
@@ -128,9 +126,9 @@ class ReservationUpdate(BaseModel):
 
 class Reservation(ReservationBase):
     id: int
-    status: str
+    status: Optional[str] = "pending"
     user_id: Optional[int] = None
-    created_at: datetime
+    created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
 
     class Config:

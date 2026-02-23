@@ -508,32 +508,6 @@ export default function Book({ user }) {
       {loading && <p>Loading availability…</p>}
       {error && <p style={{ color: 'red' }}>{error}</p>}
       {rangeError && <p style={{ color: 'red' }}>{rangeError}</p>}
-      {/* Only show top popup for regular users, not for admin blocks */}
-      {submissionMessage && !isAdmin && (
-        <div style={{ 
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          width: '100%',
-          zIndex: 1000,
-          backgroundColor: submissionType === 'success' ? '#4CAF50' : '#f44336',
-          color: 'white',
-          padding: '20px',
-          textAlign: 'center',
-          boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
-          animation: 'slideDown 0.5s ease-out',
-          fontSize: '18px',
-          fontWeight: 'bold'
-        }}>
-          {submissionMessage}
-        </div>
-      )}
-      <style>{`
-        @keyframes slideDown {
-          from { transform: translateY(-100%); opacity: 0; }
-          to { transform: translateY(0); opacity: 1; }
-        }
-      `}</style>
 
       {!loading && (
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
