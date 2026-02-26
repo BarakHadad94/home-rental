@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { BrowserRouter as Router, Routes, Route, Link, useNavigate } from 'react-router-dom'
+import { BrowserRouter as Router, Routes, Route, Link, NavLink, useNavigate } from 'react-router-dom'
 import axios from 'axios'
 import Book from './pages/Book'
 import BookingSuccess from './pages/BookingSuccess'
@@ -91,30 +91,13 @@ function HomePage({ user }) {
     setLastTouchTime(currentTime);
   };
 
-  if (loading) return <p>Loading apartment info...</p>;
+  if (loading) return <div className="home-page" style={{ textAlign: 'center', padding: '3rem' }}><p>Loading apartment info...</p></div>;
   
   if (error) return (
-    <div style={{ 
-      textAlign: 'center', 
-      padding: '20px', 
-      backgroundColor: '#f8d7da', 
-      color: '#721c24' 
-    }}>
+    <div className="home-page" style={{ textAlign: 'center', padding: '2rem', color: '#721c24' }}>
       <h2>Error Loading Apartment Information</h2>
       <p>{error}</p>
-      <button 
-        onClick={() => window.location.reload()}
-        style={{
-          padding: '10px 20px',
-          backgroundColor: '#007bff',
-          color: 'white',
-          border: 'none',
-          borderRadius: '4px',
-          cursor: 'pointer'
-        }}
-      >
-        Retry
-      </button>
+      <button className="btn-primary" onClick={() => window.location.reload()}>Retry</button>
     </div>
   );
 
@@ -132,128 +115,70 @@ function HomePage({ user }) {
     return `${hour12} ${ampm}`;
   };
 
+  const tagline = settings.description ? (settings.description.split('.')[0] + (settings.description.includes('.') ? '.' : '')) : '';
+  const introText = settings.description && settings.description.includes('.') ? settings.description.split('.').slice(1).join('.').trim() : '';
+
   return (
-    <div className="home-page" style={{ padding: '0 20px', maxWidth: '800px', margin: '0 auto' }}>
-      <h1 
-        onTouchStart={handleAdminAccess}
-        onClick={handleAdminAccess}
-        style={{ 
-          userSelect: 'none',
-          textAlign: 'center'
-        }}
-      >
-        {settings.apartment_name}
-      </h1>
-      <p>{settings.description}</p>
-      
-      {featured_photo && (
-        <div style={{ 
-          display: 'flex', 
-          justifyContent: 'center', 
-          margin: '20px 0' 
-        }}>
+    <>
+      {/* Hero: full-width featured photo with overlay + headline + tagline + CTA */}
+      <section className="home-hero" style={!featured_photo ? { background: 'linear-gradient(135deg, #0d9488 0%, #0f766e 100%)' } : undefined}>
+        {featured_photo && (
           <img
+            className="home-hero-image"
             src={`/static/photos/${featured_photo.filename}`}
-            alt={featured_photo.description || 'Apartment Photo'}
-            style={{ 
-              maxWidth: '100%', 
-              maxHeight: '400px', 
-              objectFit: 'contain', 
-              borderRadius: '8px' 
-            }}
-            onError={(e) => {
-              console.error('Image load error:', featured_photo.filename);
-              e.target.style.display = 'none';
-            }}
+            alt={featured_photo.description || 'Apartment'}
+            onError={(e) => { e.target.style.display = 'none'; }}
           />
+        )}
+        {featured_photo && <div className="home-hero-overlay" />}
+        <div className="home-hero-content">
+          <h1
+            className="home-hero-title"
+            onTouchStart={handleAdminAccess}
+            onClick={handleAdminAccess}
+          >
+            {settings.apartment_name}
+          </h1>
+          {tagline && <p className="home-hero-tagline">{tagline}</p>}
+          <Link to="/book" className="home-hero-cta">Check availability</Link>
         </div>
-      )}
+      </section>
 
-      {/* Check-in/Check-out Times */}
-      <div style={{ 
-        backgroundColor: '#e8f4f8', 
-        padding: '20px', 
-        borderRadius: '8px', 
-        marginTop: '20px',
-        border: '1px solid #b3d9e6'
-      }}>
-        <h3 style={{ marginTop: 0, marginBottom: '15px', color: '#2c3e50' }}>Check-in & Check-out</h3>
-        <div style={{ display: 'flex', gap: '30px', flexWrap: 'wrap' }}>
-          <div>
-            <strong style={{ color: '#34495e' }}>Check-in:</strong>
-            <span style={{ marginLeft: '8px' }}>Starts at {formatTime(settings.check_in_time || '14:00')}</span>
-          </div>
-          <div>
-            <strong style={{ color: '#34495e' }}>Check-out:</strong>
-            <span style={{ marginLeft: '8px' }}>Until {formatTime(settings.check_out_time || '11:00')}</span>
-          </div>
+      <div className="home-page">
+        {introText && <p className="home-intro">{introText}</p>}
+
+        <div className="home-included-card">
+          <h3>Amenities</h3>
+          <ul className="home-amenities">
+            <li>2 Bedrooms</li>
+            <li>Living room</li>
+            <li>Kitchen</li>
+            <li>Bathroom</li>
+            <li>Garden & Rooftop</li>
+            <li>Parking</li>
+          </ul>
         </div>
-      </div>
 
-      {/* Property Details */}
-      <div style={{ 
-        backgroundColor: '#f9f9f9', 
-        padding: '20px', 
-        borderRadius: '8px', 
-        marginTop: '20px',
-        border: '1px solid #e0e0e0'
-      }}>
-        <h3 style={{ marginTop: 0, marginBottom: '15px', color: '#2c3e50' }}>Property Details</h3>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '15px' }}>
-          <div>
-            <strong style={{ color: '#34495e' }}>Bedrooms:</strong>
-            <p style={{ margin: '5px 0 0 0', color: '#555' }}>2 bedrooms with double beds</p>
+        <div className="home-visit-contact">
+          <div className="block">
+            <h3>Check-in & Check-out</h3>
+            <p><strong>Check-in:</strong> {settings.check_in_time || '14:00'}</p>
+            <p><strong>Check-out:</strong> {settings.check_out_time || '11:00'}</p>
           </div>
-          <div>
-            <strong style={{ color: '#34495e' }}>Living Space:</strong>
-            <p style={{ margin: '5px 0 0 0', color: '#555' }}>Living room</p>
-          </div>
-          <div>
-            <strong style={{ color: '#34495e' }}>Kitchen:</strong>
-            <p style={{ margin: '5px 0 0 0', color: '#555' }}>Well-equipped kitchen</p>
-          </div>
-          <div>
-            <strong style={{ color: '#34495e' }}>Bathroom:</strong>
-            <p style={{ margin: '5px 0 0 0', color: '#555' }}>Bathroom and shower</p>
-          </div>
-          <div>
-            <strong style={{ color: '#34495e' }}>Outdoor:</strong>
-            <p style={{ margin: '5px 0 0 0', color: '#555' }}>Garden and rooftop</p>
-          </div>
-          <div>
-            <strong style={{ color: '#34495e' }}>Parking:</strong>
-            <p style={{ margin: '5px 0 0 0', color: '#555' }}>Available</p>
+          <div className="block-divider" aria-hidden="true" />
+          <div className="block home-contact">
+            <h3>Contact</h3>
+            <p><strong>Email:</strong> {settings.contact_email}</p>
+            <p><strong>Phone:</strong> {settings.contact_phone}</p>
+            <p><strong>Address:</strong> {settings.address}</p>
           </div>
         </div>
-      </div>
-      
-      <div style={{ 
-        backgroundColor: '#f4f4f4', 
-        padding: '15px', 
-        borderRadius: '8px', 
-        marginTop: '20px' 
-      }}>
-        <h3>Contact Information</h3>
-        <p><strong>Email:</strong> {settings.contact_email}</p>
-        <p><strong>Phone:</strong> {settings.contact_phone}</p>
-        <p><strong>Address:</strong> {settings.address}</p>
-      </div>
 
-      {adminAccessTouches >= 7 && (
-        <Link 
-          to="/admin" 
-          style={{ 
-            display: 'block', 
-            textAlign: 'center',
-            marginTop: 20, 
-            color: 'blue', 
-            textDecoration: 'underline'
-          }}
-        >
-          Admin Access
-        </Link>
-      )}
-    </div>
+        {adminAccessTouches >= 7 && (
+          <Link to="/admin" className="home-admin-link">Admin Access</Link>
+        )}
+      </div>
+    </>
   );
 }
 
@@ -299,88 +224,40 @@ function AppContent() {
   };
 
   return (
-      <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
-        <div style={{ 
-          display: 'flex', 
-          justifyContent: 'space-between', 
-          alignItems: 'center',
-          padding: '10px 20px', 
-          minHeight: '50px',
-          width: '100%',
-          position: 'relative',
-          boxSizing: 'border-box'
-        }}>
-          {/* Spacer on left to balance layout */}
-          <div style={{ width: '200px', flexShrink: 0 }}></div>
-          
-          {/* Grey background ONLY for tabs - centered */}
-          <div style={{ 
-            display: 'flex', 
-            gap: '20px', 
-            alignItems: 'center',
-            justifyContent: 'center',
-            backgroundColor: '#f4f4f4',
-            padding: '10px 30px',
-            borderRadius: '4px',
-            flex: '0 0 auto'
-          }}>
-            <Link to="/" style={{ textDecoration: 'none', color: 'blue', whiteSpace: 'nowrap' }}>Home</Link>
-            <Link to="/book" style={{ textDecoration: 'none', color: 'blue', whiteSpace: 'nowrap' }}>Book</Link>
-            <Link to="/gallery" style={{ textDecoration: 'none', color: 'blue', whiteSpace: 'nowrap' }}>Gallery</Link>
+      <div className="app-layout">
+        <header className="app-header">
+          <nav className="app-header-nav">
+            <NavLink to="/" end className={({ isActive }) => isActive ? 'active' : ''}>Home</NavLink>
+            <span className="app-nav-divider" aria-hidden="true" />
+            <NavLink to="/book" className={({ isActive }) => isActive ? 'active' : ''}>Book</NavLink>
+            <span className="app-nav-divider" aria-hidden="true" />
+            <NavLink to="/gallery" className={({ isActive }) => isActive ? 'active' : ''}>Gallery</NavLink>
             {user && !isAdmin && (
-              <Link to="/my-reservations" style={{ textDecoration: 'none', color: 'blue', whiteSpace: 'nowrap' }}>My Reservations</Link>
+              <>
+                <span className="app-nav-divider" aria-hidden="true" />
+                <NavLink to="/my-reservations" className={({ isActive }) => isActive ? 'active' : ''}>My Reservations</NavLink>
+              </>
             )}
             {isAdmin && (
-              <Link to="/admin" style={{ textDecoration: 'none', color: 'blue', whiteSpace: 'nowrap' }}>Manage Reservations</Link>
+              <>
+                <span className="app-nav-divider" aria-hidden="true" />
+                <NavLink to="/admin" className={({ isActive }) => isActive ? 'active' : ''}>Manage Reservations</NavLink>
+              </>
             )}
-          </div>
-          
-          {/* Login/Logout on the right - NO grey background - ALWAYS on right */}
-          <div style={{ 
-            display: 'flex', 
-            alignItems: 'center', 
-            gap: '15px',
-            width: '200px',
-            justifyContent: 'flex-end',
-            flexShrink: 0
-          }}>
+          </nav>
+          <div className="app-header-auth">
             {user ? (
               <>
-                <span style={{ color: '#333', fontWeight: '500' }}>{user.username}</span>
-                <button 
-                  onClick={handleLogout}
-                  style={{
-                    padding: '6px 12px',
-                    backgroundColor: '#f44336',
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: '4px',
-                    cursor: 'pointer',
-                    fontSize: '14px'
-                  }}
-                >
-                  Logout
-                </button>
+                <span className="username">{user.username}</span>
+                <button type="button" onClick={handleLogout} className="btn-secondary">Logout</button>
               </>
             ) : (
-              <button
-                onClick={() => openAuthModal(false)}
-                style={{
-                  padding: '6px 12px',
-                  backgroundColor: '#4CAF50',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '4px',
-                  cursor: 'pointer',
-                  fontSize: '14px'
-                }}
-              >
-                Login / Sign Up
-              </button>
+              <button type="button" onClick={() => openAuthModal(false)} className="btn-primary">Login / Sign Up</button>
             )}
           </div>
-        </div>
+        </header>
 
+        <main style={{ flex: 1 }}>
         <Routes>
           <Route path="/" element={<HomePage user={user} />} />
           <Route path="/book" element={<Book user={user} />} />
@@ -417,6 +294,7 @@ function AppContent() {
             } 
           />
         </Routes>
+        </main>
 
         {showAuthModal && (
           <AuthModal
