@@ -102,6 +102,19 @@
   border-color: #d1d5db;
 }
 
+/* Header logout only: add visible fill without affecting other secondary buttons */
+.app-logout-btn {
+  background-color: #fee2e2;
+  border-color: #fecaca;
+  color: #b91c1c;
+}
+
+.app-logout-btn:hover {
+  background-color: #fecaca;
+  border-color: #fca5a5;
+  color: #991b1b;
+}
+
 /* Home page: hero block */
 .home-hero {
   position: relative;
@@ -379,6 +392,530 @@
 }
 .home-admin-link:hover {
   color: var(--color-accent);
+}
+
+/* Gallery page: light polish aligned with Home style */
+.gallery-page {
+  width: 100%;
+  max-width: 980px;
+  margin: 0 auto;
+  padding: 2rem 1.5rem;
+  box-sizing: border-box;
+}
+
+.gallery-title {
+  margin: 0 0 1.25rem 0;
+  color: var(--color-text, #1a1a1a);
+  font-size: clamp(1.5rem, 3.2vw, 2rem);
+  font-weight: 700;
+  text-align: center;
+}
+
+.gallery-status {
+  max-width: 640px;
+  margin: 2rem auto;
+  padding: 1rem 1.25rem;
+  border-radius: 10px;
+  border: 1px solid var(--color-border, #e5e7eb);
+  background: #fff;
+  box-shadow: var(--shadow-sm);
+  color: var(--color-text-muted, #4a4a4a);
+  text-align: center;
+}
+
+.gallery-status-error {
+  border-color: #fecaca;
+  background: #fef2f2;
+  color: #b91c1c;
+}
+
+.gallery-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+  padding: 0.5rem 0;
+}
+
+.gallery-card {
+  position: relative;
+  cursor: pointer;
+  overflow: hidden;
+  border-radius: 12px;
+  border: 1px solid var(--color-border, #e5e7eb);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+  background: #fff;
+}
+
+.gallery-image {
+  width: 100%;
+  height: 300px;
+  object-fit: cover;
+  transition: transform 0.3s ease;
+  display: block;
+}
+
+.gallery-card:hover .gallery-image {
+  transform: scale(1.08);
+}
+
+.gallery-caption {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.65), rgba(0, 0, 0, 0.25));
+  color: #fff;
+  padding: 0.65rem 0.75rem;
+  text-align: center;
+  font-size: 0.92rem;
+  font-weight: 500;
+}
+
+.gallery-lightbox {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.9);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.gallery-lightbox-content {
+  position: relative;
+  width: 90vw;
+  height: 90vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.gallery-lightbox-nav {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  transform: translateY(-50%);
+  z-index: 1001;
+}
+
+.gallery-lightbox-arrow {
+  background: rgba(15, 118, 110, 0.78);
+  color: #fff;
+  border: none;
+  padding: 15px 20px;
+  border-radius: 999px;
+  font-size: 24px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.2s;
+}
+
+.gallery-lightbox-arrow:hover {
+  background: rgba(13, 148, 136, 0.95);
+}
+
+.gallery-lightbox-arrow-left {
+  margin-left: 10px;
+}
+
+.gallery-lightbox-arrow-right {
+  margin-right: 10px;
+}
+
+.gallery-lightbox-close {
+  position: absolute;
+  top: -10px;
+  right: 0;
+  background: rgba(17, 24, 39, 0.75);
+  color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  padding: 10px 15px;
+  border-radius: 0 0 0 8px;
+  cursor: pointer;
+  font-size: 20px;
+  transition: background-color 0.2s;
+}
+
+.gallery-lightbox-close:hover {
+  background: rgba(17, 24, 39, 0.95);
+}
+
+.gallery-lightbox-image-wrap {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.gallery-lightbox-image {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+}
+
+.gallery-lightbox-caption {
+  position: absolute;
+  bottom: -40px;
+  left: 0;
+  right: 0;
+  color: #fff;
+  text-align: center;
+  background: rgba(17, 24, 39, 0.75);
+  padding: 10px;
+  border-radius: 6px;
+  font-size: 0.92rem;
+}
+
+@media (max-width: 780px) {
+  .gallery-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Book page: soft visual alignment with Home/Gallery */
+.book-page {
+  width: 100%;
+  max-width: 860px;
+  margin: 0 auto;
+  padding: 1rem 1.5rem 2rem;
+  box-sizing: border-box;
+}
+
+.book-title {
+  margin: 0 0 1rem 0;
+  color: var(--color-text, #1a1a1a);
+  font-size: clamp(1.6rem, 3.2vw, 2rem);
+  font-weight: 700;
+  text-align: center;
+}
+
+.book-subtitle {
+  margin: 0 0 0.75rem 0;
+  color: var(--color-text-muted, #4a4a4a);
+  text-align: center;
+}
+
+.book-card {
+  background: #fff;
+  border: 1px solid var(--color-border, #e5e7eb);
+  border-radius: 12px;
+  box-shadow: var(--shadow-sm);
+  padding: 0.9rem 1rem;
+}
+
+.book-pricing-guide {
+  margin-bottom: 1.25rem;
+  background: linear-gradient(145deg, #ecfeff 0%, #ffffff 60%);
+  border-color: #99f6e4;
+  box-shadow: 0 10px 24px rgba(13, 148, 136, 0.12);
+  padding: 1rem 1.1rem;
+}
+
+.book-pricing-guide-head {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  margin-bottom: 1rem;
+}
+
+.book-pricing-guide-kicker {
+  color: #0f766e;
+  font-size: 0.76rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.book-pricing-guide-title {
+  color: var(--color-text, #1a1a1a);
+  font-size: 1.05rem;
+}
+
+.book-pricing-list {
+  list-style: none;
+  padding-left: 0;
+  margin: 0.35rem 0 0 0;
+  display: grid;
+  gap: 0.45rem;
+}
+
+.book-pricing-list-main {
+  margin-top: 0.2rem;
+}
+
+.book-pricing-list-extra {
+  margin-top: 1rem;
+  padding-top: 0.75rem;
+  border-top: 1px dashed #99f6e4;
+}
+
+.book-pricing-list li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.75rem;
+  background: rgba(255, 255, 255, 0.75);
+  border: 1px solid #ccfbf1;
+  border-radius: 10px;
+  padding: 0.5rem 0.65rem;
+}
+
+.book-pricing-label {
+  color: var(--color-text, #1a1a1a);
+  font-weight: 600;
+}
+
+.book-pricing-value {
+  color: #0f766e;
+  font-weight: 700;
+  font-size: 0.92rem;
+}
+
+.book-pricing-payment {
+  margin: 0.95rem 0 0 0;
+  font-size: 0.88rem;
+  color: #334155;
+  background: #ffffff;
+  border: 1px solid #a7f3d0;
+  border-radius: 8px;
+  padding: 0.5rem 0.65rem;
+}
+
+.book-status {
+  margin: 0.6rem auto;
+  padding: 0.6rem 0.8rem;
+  border-radius: 8px;
+  border: 1px solid var(--color-border, #e5e7eb);
+  background: #fff;
+  color: var(--color-text-muted, #4a4a4a);
+}
+
+.book-status-error {
+  border-color: #fecaca;
+  background: #fef2f2;
+  color: #b91c1c;
+}
+
+.book-calendar-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  background: #fff;
+  border: 1px solid var(--color-border, #e5e7eb);
+  border-radius: 12px;
+  box-shadow: var(--shadow-sm);
+  padding: 1rem;
+}
+
+.book-calendar-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.book-calendar-month {
+  margin: 0;
+  min-width: 220px;
+  text-align: center;
+}
+
+.book-month-btn {
+  border: 1px solid var(--color-border, #e5e7eb);
+  background: #fff;
+  color: var(--color-text, #1a1a1a);
+  border-radius: 8px;
+  width: 36px;
+  height: 36px;
+  cursor: pointer;
+}
+
+.book-month-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.book-calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 6px;
+  max-width: 420px;
+  width: 100%;
+}
+
+.book-weekday {
+  text-align: center;
+  font-weight: 600;
+  opacity: 0.8;
+  font-size: 0.9rem;
+}
+
+.book-day-cell {
+  height: 44px;
+  border-radius: 8px;
+  border: 1px solid #ddd;
+  cursor: pointer;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.book-day-cell.is-selected {
+  border: 2px solid #2eaadc;
+}
+
+.book-day-cell.is-disabled {
+  cursor: not-allowed;
+}
+
+.book-day-cell:not(.is-disabled):hover {
+  box-shadow: 0 0 0 2px rgba(13, 148, 136, 0.12);
+}
+
+.book-selection-row {
+  margin-top: 12px;
+}
+
+.book-selection-nights {
+  margin-left: 8px;
+}
+
+.book-clear-btn {
+  margin-left: 12px;
+}
+
+.book-form {
+  max-width: 520px;
+  margin: 24px auto 0;
+  width: 100%;
+}
+
+.book-form-grid {
+  display: grid;
+  gap: 12px;
+}
+
+.book-form label {
+  display: grid;
+  gap: 6px;
+  color: var(--color-text, #1a1a1a);
+  font-weight: 500;
+}
+
+.book-input,
+.book-textarea {
+  width: 100%;
+  border: 1px solid var(--color-border, #e5e7eb);
+  border-radius: 8px;
+  padding: 0.6rem 0.7rem;
+  font-size: 0.95rem;
+  box-sizing: border-box;
+}
+
+.book-input:focus,
+.book-textarea:focus {
+  outline: 2px solid rgba(13, 148, 136, 0.2);
+  border-color: var(--color-accent, #0d9488);
+}
+
+.book-field-error {
+  color: #b91c1c;
+  font-size: 12px;
+}
+
+.book-reservation-pricing p {
+  margin: 0.35rem 0;
+}
+
+.book-reservation-pricing {
+  background: linear-gradient(135deg, #f0fdfa 0%, #ffffff 70%);
+  border-color: #99f6e4;
+  padding: 1rem 1.1rem;
+}
+
+.book-pricing-title {
+  display: inline-block;
+  color: var(--color-accent, #0d9488);
+  font-size: 0.95rem;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  margin-bottom: 0.25rem;
+}
+
+.book-pricing-breakdown {
+  color: var(--color-text, #1a1a1a);
+  font-size: 0.95rem;
+}
+
+.book-pricing-total {
+  margin-top: 0.55rem;
+  padding-top: 0.55rem;
+  border-top: 1px solid #c6f6ee;
+  color: #0f766e;
+  font-size: 1.02rem;
+}
+
+.book-admin-card {
+  border-color: #93c5fd;
+  background: #eff6ff;
+}
+
+.book-admin-note {
+  margin: 8px 0 0 0;
+  font-size: 14px;
+  color: var(--color-text-muted, #4a4a4a);
+}
+
+.book-submit-btn {
+  width: 100%;
+  padding: 10px;
+  background-color: var(--color-accent, #0d9488);
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.book-submit-btn.is-submitting,
+.book-submit-btn:disabled {
+  background-color: #9ca3af;
+  cursor: not-allowed;
+}
+
+.book-submission {
+  margin-top: 10px;
+  text-align: center;
+}
+
+.book-submission.is-success {
+  border-color: #86efac;
+  background: #f0fdf4;
+  color: #166534;
+}
+
+.book-submission.is-error {
+  border-color: #fecaca;
+  background: #fef2f2;
+  color: #991b1b;
+}
+
+@media (max-width: 680px) {
+  .book-page {
+    padding: 0.75rem 1rem 1.5rem;
+  }
+  .book-calendar-month {
+    min-width: 180px;
+    font-size: 1rem;
+  }
 }
 
 #root {

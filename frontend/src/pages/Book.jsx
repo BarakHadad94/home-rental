@@ -277,7 +277,21 @@ export default function Book({ user }) {
 
   const onFormChange = (e) => {
     const { name, value } = e.target;
-    setForm((prev) => ({ ...prev, [name]: value }));
+    let nextValue = value;
+
+    if (name === 'guest_count') {
+      // Keep typed guest count constrained to 1-4 (same as spinner arrows).
+      if (value === '') {
+        nextValue = '';
+      } else {
+        const parsed = Number(value);
+        if (Number.isFinite(parsed)) {
+          nextValue = Math.min(4, Math.max(1, Math.trunc(parsed)));
+        }
+      }
+    }
+
+    setForm((prev) => ({ ...prev, [name]: nextValue }));
     if (name in fieldErrors && fieldErrors[name]) {
       setFieldErrors((prev) => ({ ...prev, [name]: '' }));
     }
@@ -378,8 +392,8 @@ export default function Book({ user }) {
       nextErrors.phone = 'Please enter your phone number.';
     }
     const guestsNum = Number(form.guest_count);
-    if (!Number.isFinite(guestsNum) || guestsNum < 1 || guestsNum > 8) {
-      nextErrors.guest_count = 'Guests must be between 1 and 8.';
+    if (!Number.isFinite(guestsNum) || guestsNum < 1 || guestsNum > 4) {
+      nextErrors.guest_count = 'Guests must be between 1 and 4.';
     }
 
     // If any errors, show near fields and stop
@@ -483,45 +497,56 @@ export default function Book({ user }) {
   }, [year, month]);
 
   return (
-    <div style={{ maxWidth: '800px', margin: '0 auto', padding: '0 20px' }}>
-      <h2>Book Your Stay</h2>
+    <div className="book-page">
+      <h2 className="book-title">Book Your Stay</h2>
       
       {/* Pricing Guide - Always Visible */}
-      <div style={{ 
-        backgroundColor: '#f4f4f4', 
-        padding: '12px', 
-        borderRadius: '8px', 
-        marginBottom: '24px' 
-      }}>
-        <strong>Pricing Guide:</strong>
-        <ul style={{ paddingLeft: '20px', margin: '8px 0' }}>
-          <li><strong>1-2 guests:</strong> 500 ILS per night</li>
-          <li><strong>3 guests:</strong> 600 ILS per night</li>
-          <li><strong>4 guests:</strong> 700 ILS per night</li>
-          <li>Friday nights: +100 ILS to each category</li>
+      <div className="book-card book-pricing-guide">
+        <div className="book-pricing-guide-head">
+          <span className="book-pricing-guide-kicker">Pricing Guide</span>
+        </div>
+        <ul className="book-pricing-list book-pricing-list-main">
+          <li>
+            <span className="book-pricing-label">1-2 guests</span>
+            <span className="book-pricing-value">500 ILS per night</span>
+          </li>
+          <li>
+            <span className="book-pricing-label">3 guests</span>
+            <span className="book-pricing-value">600 ILS per night</span>
+          </li>
+          <li>
+            <span className="book-pricing-label">4 guests</span>
+            <span className="book-pricing-value">700 ILS per night</span>
+          </li>
         </ul>
-        <p style={{ margin: '8px 0 0 0', fontSize: '14px', color: '#555' }}><strong>Payment:</strong> Cash upon arrival (no credit cards).</p>
+        <ul className="book-pricing-list book-pricing-list-extra">
+          <li>
+            <span className="book-pricing-label">Friday nights</span>
+            <span className="book-pricing-value">+100 ILS</span>
+          </li>
+        </ul>
+        <p className="book-pricing-payment"><strong>Payment:</strong> Cash upon arrival (no credit cards).</p>
       </div>
 
-      <p>Select your check-in and check-out dates from the calendar.</p>
+      <p className="book-subtitle">Select your check-in and check-out dates from the calendar.</p>
 
-      {loading && <p>Loading availability…</p>}
-      {error && <p style={{ color: 'red' }}>{error}</p>}
-      {rangeError && <p style={{ color: 'red' }}>{rangeError}</p>}
+      {loading && <p className="book-status">Loading availability…</p>}
+      {error && <p className="book-status book-status-error">{error}</p>}
+      {rangeError && <p className="book-status book-status-error">{rangeError}</p>}
 
       {!loading && (
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 8 }}>
-            <button onClick={goPrevMonth} disabled={prevDisabled}>&lt;</button>
-            <h3 style={{ margin: 0 }}>
+        <div className="book-calendar-wrap">
+          <div className="book-calendar-header">
+            <button className="book-month-btn" onClick={goPrevMonth} disabled={prevDisabled}>&lt;</button>
+            <h3 className="book-calendar-month">
               {new Date(year, month - 1).toLocaleString('en-US', { month: 'long', year: 'numeric' })}
             </h3>
-            <button onClick={goNextMonth}>&gt;</button>
+            <button className="book-month-btn" onClick={goNextMonth}>&gt;</button>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 6, maxWidth: 420, width: '100%' }}>
+          <div className="book-calendar-grid">
             {['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map((d) => (
-              <div key={d} style={{ textAlign: 'center', fontWeight: 600, opacity: 0.8 }}>{d}</div>
+              <div key={d} className="book-weekday">{d}</div>
             ))}
             {calendarDays.map((cell) => {
               if (cell.type === 'blank') return <div key={cell.key} />;
@@ -534,20 +559,20 @@ export default function Book({ user }) {
               const baseBg = styleAvailable ? '#ffffff' : '#f0f0f0';
               const bg = selected ? '#cdeffd' : (disabled ? '#f7f7f7' : baseBg);
               const color = disabled ? '#bbb' : (styleAvailable && !cell.isPast ? '#222' : '#999');
+              const classes = [
+                'book-day-cell',
+                selected ? 'is-selected' : '',
+                disabled ? 'is-disabled' : '',
+                styleAvailable ? 'is-available' : 'is-unavailable',
+              ].filter(Boolean).join(' ');
 
               return (
                 <button
                   key={cell.dateStr}
                   onClick={() => handleDateClick(cell)}
                   disabled={disabled}
-                  style={{
-                    height: 44,
-                    borderRadius: 6,
-                    border: selected ? '2px solid #2eaadc' : '1px solid #ddd',
-                    background: bg,
-                    color,
-                    cursor: disabled ? 'not-allowed' : 'pointer',
-                  }}
+                  className={classes}
+                  style={{ background: bg, color }}
                   title={cell.dateStr}
                 >
                   {cell.day}
@@ -556,36 +581,30 @@ export default function Book({ user }) {
             })}
           </div>
 
-          <div style={{ marginTop: 12 }}>
+          <div className="book-selection-row">
             <strong>Selected:</strong>{' '}
             {checkIn ? formatDisplay(checkIn) : '—'} {checkOut ? '→ ' + formatDisplay(checkOut) : ''}
             {checkIn && checkOut && (
-              <span style={{ marginLeft: 8 }}>
+              <span className="book-selection-nights">
                 ({diffNights(checkIn, checkOut)} night{diffNights(checkIn, checkOut) !== 1 ? 's' : ''})
               </span>
             )}
             {(checkIn || checkOut) && (
-              <button onClick={resetSelection} style={{ marginLeft: 12 }}>Clear</button>
+              <button className="book-clear-btn btn-secondary" onClick={resetSelection}>Clear</button>
             )}
           </div>
         </div>
       )}
 
       {checkIn && checkOut && (
-        <form onSubmit={handleSubmit} noValidate style={{ maxWidth: 520, margin: '24px auto 0', width: '100%' }}>
-          <div style={{ display: 'grid', gap: 12 }}>
+        <form onSubmit={handleSubmit} noValidate className="book-form">
+          <div className="book-form-grid">
             {isAdmin ? (
               // Admin view: simplified form - just submit button
               <>
-                <div style={{ 
-                  backgroundColor: '#e3f2fd', 
-                  padding: '12px', 
-                  borderRadius: '8px', 
-                  marginBottom: '12px',
-                  border: '1px solid #2196F3'
-                }}>
+                <div className="book-card book-admin-card">
                   <strong>Admin: Block Dates</strong>
-                  <p style={{ margin: '8px 0 0 0', fontSize: '14px', color: '#555' }}>
+                  <p className="book-admin-note">
                     Click submit to block these dates. They will be marked as occupied and unavailable for booking.
                   </p>
                 </div>
@@ -593,29 +612,13 @@ export default function Book({ user }) {
                   <button 
                     type="submit" 
                     disabled={submitting}
-                    style={{ 
-                      width: '100%', 
-                      padding: '10px', 
-                      backgroundColor: submitting ? '#cccccc' : '#2196F3', 
-                      color: 'white', 
-                      border: 'none', 
-                      borderRadius: '4px',
-                      fontSize: '16px',
-                      fontWeight: 'bold'
-                    }}
+                    className={`book-submit-btn ${submitting ? 'is-submitting' : ''}`}
                   >
                     {submitting ? 'Blocking dates…' : 'Block These Dates'}
                   </button>
                   
                   {submissionMessage && (
-                    <div style={{ 
-                      marginTop: '10px',
-                      padding: '10px',
-                      borderRadius: '4px',
-                      backgroundColor: submissionType === 'success' ? '#dff0d8' : '#f2dede',
-                      color: submissionType === 'success' ? '#3c763d' : '#a94442',
-                      textAlign: 'center'
-                    }}>
+                    <div className={`book-status book-submission ${submissionType === 'success' ? 'is-success' : 'is-error'}`}>
                       {submissionMessage}
                     </div>
                   )}
@@ -627,41 +630,45 @@ export default function Book({ user }) {
                 <label>
                   Name
                   <input
+                    className="book-input"
                     type="text"
                     name="guest_name"
                     value={form.guest_name}
                     onChange={onFormChange}
                   />
-                  {fieldErrors.guest_name && <div style={{ color: 'red', fontSize: 12 }}>{fieldErrors.guest_name}</div>}
+                  {fieldErrors.guest_name && <div className="book-field-error">{fieldErrors.guest_name}</div>}
                 </label>
 
                 {!user && (
                   <label>
                     Email
                     <input
+                      className="book-input"
                       type="email"
                       name="email"
                       value={form.email}
                       onChange={onFormChange}
                     />
-                    {fieldErrors.email && <div style={{ color: 'red', fontSize: 12 }}>{fieldErrors.email}</div>}
+                    {fieldErrors.email && <div className="book-field-error">{fieldErrors.email}</div>}
                   </label>
                 )}
 
                 <label>
                   Phone
                   <input
+                    className="book-input"
                     type="tel"
                     name="phone"
                     value={form.phone}
                     onChange={onFormChange}
                   />
-                  {fieldErrors.phone && <div style={{ color: 'red', fontSize: 12 }}>{fieldErrors.phone}</div>}
+                  {fieldErrors.phone && <div className="book-field-error">{fieldErrors.phone}</div>}
                 </label>
 
                 <label>
                   Guests
                   <input
+                    className="book-input"
                     type="number"
                     name="guest_count"
                     min={1}
@@ -669,22 +676,17 @@ export default function Book({ user }) {
                     value={form.guest_count}
                     onChange={onFormChange}
                   />
-                  {fieldErrors.guest_count && <div style={{ color: 'red', fontSize: 12 }}>{fieldErrors.guest_count}</div>}
+                  {fieldErrors.guest_count && <div className="book-field-error">{fieldErrors.guest_count}</div>}
                 </label>
 
                 {/* Price display for specific reservation */}
-                <div style={{ 
-                  backgroundColor: '#f4f4f4', 
-                  padding: '12px', 
-                  borderRadius: '8px', 
-                  marginBottom: '12px' 
-                }}>
-                  <strong>Reservation Pricing:</strong>
-                  <p>
+                <div className="book-card book-reservation-pricing">
+                  <strong className="book-pricing-title">Reservation Pricing</strong>
+                  <p className="book-pricing-breakdown">
                     {diffNights(checkIn, checkOut)} night{diffNights(checkIn, checkOut) !== 1 ? 's' : ''} 
                     {' '}for {form.guest_count} guest{form.guest_count !== 1 ? 's' : ''}
                   </p>
-                  <p>
+                  <p className="book-pricing-total">
                     <strong>Total Cost: {totalPrice} ILS</strong>
                   </p>
                 </div>
@@ -693,6 +695,7 @@ export default function Book({ user }) {
                 <label>
                   Special Requests
                   <textarea
+                    className="book-textarea"
                     name="special_requests"
                     rows={3}
                     value={form.special_requests}
@@ -705,28 +708,14 @@ export default function Book({ user }) {
                   <button 
                     type="submit" 
                     disabled={submitting}
-                    style={{ 
-                      width: '100%', 
-                      padding: '10px', 
-                      backgroundColor: submitting ? '#cccccc' : '#4CAF50', 
-                      color: 'white', 
-                      border: 'none', 
-                      borderRadius: '4px' 
-                    }}
+                    className={`book-submit-btn ${submitting ? 'is-submitting' : ''}`}
                   >
                     {submitting ? 'Submitting…' : 'Submit request'}
                   </button>
                   
                   {/* Move submission message here, right after the submit button */}
                   {submissionMessage && (
-                    <div style={{ 
-                      marginTop: '10px',
-                      padding: '10px',
-                      borderRadius: '4px',
-                      backgroundColor: submissionType === 'success' ? '#dff0d8' : '#f2dede',
-                      color: submissionType === 'success' ? '#3c763d' : '#a94442',
-                      textAlign: 'center'
-                    }}>
+                    <div className={`book-status book-submission ${submissionType === 'success' ? 'is-success' : 'is-error'}`}>
                       {submissionMessage}
                     </div>
                   )}

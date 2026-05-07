@@ -94,7 +94,7 @@ export default function UserDashboard() {
 
   return (
     <div style={{ maxWidth: '800px', margin: '0 auto', padding: '0 20px' }}>
-      <h1 style={{ marginTop: 0, marginBottom: '20px' }}>My Reservations</h1>
+      <h1 style={{ marginTop: 0, marginBottom: '20px', textAlign: 'center' }}>My Reservations</h1>
 
       {/* Current Reservations */}
       {currentReservations.length > 0 && (

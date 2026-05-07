@@ -256,7 +256,7 @@ export default function AdminDashboard() {
 
   return (
     <div style={{ maxWidth: 800, margin: 'auto', padding: 20 }}>
-      <h1>Reservation Management</h1>
+      <h1 style={{ textAlign: 'center' }}>Reservation Management</h1>
 
       {/* Current Reservations Section */}
       <h2 style={{ fontSize: '24px', marginTop: 30, marginBottom: 15, fontWeight: '600' }}>Current Reservations</h2>

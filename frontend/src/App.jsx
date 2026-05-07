@@ -249,7 +249,7 @@ function AppContent() {
             {user ? (
               <>
                 <span className="username">{user.username}</span>
-                <button type="button" onClick={handleLogout} className="btn-secondary">Logout</button>
+                <button type="button" onClick={handleLogout} className="btn-secondary app-logout-btn">Logout</button>
               </>
             ) : (
               <button type="button" onClick={() => openAuthModal(false)} className="btn-primary">Login / Sign Up</button>
