@@ -10,8 +10,9 @@ from password_utils import hash_password, verify_password
 import schemas
 import os
 import shutil
+import mimetypes
 from datetime import datetime, date, timedelta
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, FileResponse
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -110,6 +111,7 @@ def get_apartment_info(db: Session = Depends(get_db)):
                 apartment_name="Sirbnb Apartment",
                 description="A cozy apartment with beautiful views",
                 price_per_night=500,
+                max_guests=6,
                 contact_email="contact@sirbnb.com",
                 contact_phone="+972 50-123-4567",
                 address="Tel Aviv, Israel",
@@ -139,26 +141,17 @@ def get_apartment_info(db: Session = Depends(get_db)):
                 os.makedirs(static_photos_path)
             
             # Get photo files
-            photo_files = [f for f in os.listdir(static_photos_path) 
-                           if f.lower().endswith(('.png', '.jpg', '.jpeg', '.gif'))]
+            photo_files = [
+                f for f in os.listdir(static_photos_path)
+                if f.lower().endswith(PHOTO_FILE_EXTENSIONS)
+            ]
             
             print(f"DEBUG: Found {len(photo_files)} photo files in directory")
-            
-            # Predefined descriptions for known photos
-            photo_descriptions = {
-                "20250810_173639_Living_Room.png": "Living Room",
-                "20250810_174646_Living_Room_&_Kitchen.png": "Living Room",
-                "20250810_174709_Kitchen.png": "Kitchen",
-                "20250810_174757_Bedroom_1.png": "Bedroom 1",
-                "20250810_174826_Bedroom_2.png": "Bedroom 2",
-                "20250810_174900_Bathroom.png": "Bathroom",
-                "20250810_175128_Roof.png": "Roof"
-            }
-            
+
             # Create photo entries
             new_photos = []
             for idx, filename in enumerate(photo_files, 1):
-                description = photo_descriptions.get(filename, f"Photo {idx}")
+                description = _lookup_photo_description(filename, idx)
                 photo = Photo(
                     filename=filename, 
                     description=description,
@@ -201,24 +194,28 @@ def get_apartment_info(db: Session = Depends(get_db)):
             "photos": [
                 {
                     "id": photo.id,
-                    "filename": photo.filename,
+                    "filename": resolve_photo_filename(photo.filename),
                     "description": photo.description,
                     "display_order": photo.display_order,
-                    "is_featured": photo.is_featured
+                    "is_featured": photo.is_featured,
+                    "v": _photo_file_mtime(photo.filename),
+                    "content_url": f"/api/apartment/photos/{photo.id}/content",
                 } for photo in photos
             ],
             "featured_photo": {
                 "id": featured_photo.id,
-                "filename": featured_photo.filename,
+                "filename": resolve_photo_filename(featured_photo.filename),
                 "description": featured_photo.description,
                 "display_order": featured_photo.display_order,
-                "is_featured": featured_photo.is_featured
+                "is_featured": featured_photo.is_featured,
+                "v": _photo_file_mtime(featured_photo.filename),
+                "content_url": f"/api/apartment/photos/{featured_photo.id}/content",
             } if featured_photo else None
         }
 
         print("DEBUG: Returning apartment info successfully")
         return JSONResponse(content=response_data)
-    
+
     except Exception as e:
         print(f"CRITICAL ERROR in get_apartment_info: {e}")
         return JSONResponse(
@@ -234,6 +231,55 @@ def get_apartment_settings(db: Session = Depends(get_db)):
     if not settings:
         raise HTTPException(status_code=404, detail="Apartment settings not configured")
     return settings
+
+
+# Extensions we treat as gallery images on disk (DB may still list e.g. .png after conversion to .avif)
+PHOTO_FILE_EXTENSIONS = (".avif", ".webp", ".png", ".jpg", ".jpeg", ".gif")
+
+
+def _photo_stem(filename: str) -> str:
+    base = os.path.basename((filename or "").strip())
+    if not base:
+        return ""
+    stem, _ = os.path.splitext(base)
+    return stem
+
+
+def resolve_photo_filename(filename: str) -> str:
+    """Map a DB filename to a file that exists under STATIC_DIR/photos (e.g. .png -> .avif)."""
+    fn = (filename or "").strip()
+    if not fn:
+        return fn
+    photos_dir = os.path.join(STATIC_DIR, "photos")
+    path = os.path.join(photos_dir, fn)
+    try:
+        if os.path.isfile(path):
+            return fn
+    except OSError:
+        return fn
+    stem = _photo_stem(fn)
+    if not stem:
+        return fn
+    try:
+        for f in os.listdir(photos_dir):
+            if not f.lower().endswith(PHOTO_FILE_EXTENSIONS):
+                continue
+            if _photo_stem(f) == stem:
+                return f
+    except OSError:
+        pass
+    return fn
+
+
+def _lookup_photo_description(filename: str, idx: int) -> str:
+    """Match PHOTO_DESCRIPTIONS by full name or same basename stem (handles .png key vs .avif file)."""
+    if filename in PHOTO_DESCRIPTIONS:
+        return PHOTO_DESCRIPTIONS[filename]
+    stem = _photo_stem(filename)
+    for key, desc in PHOTO_DESCRIPTIONS.items():
+        if _photo_stem(key) == stem:
+            return desc
+    return f"Photo {idx}"
 
 
 # Predefined descriptions for known photos (module-level so endpoint stays simple)
@@ -260,14 +306,30 @@ PHOTO_DESCRIPTIONS = {
 }
 
 
+def _photo_file_mtime(filename: str) -> int:
+    """File mtime in nanoseconds for cache-busting when filenames stay the same."""
+    resolved = resolve_photo_filename((filename or "").strip())
+    if not resolved:
+        return 0
+    try:
+        path = os.path.join(STATIC_DIR, "photos", resolved)
+        return int(os.stat(path).st_mtime_ns)
+    except OSError:
+        return 0
+
+
 def _photo_to_dict(p):
     """Convert Photo ORM to JSON-safe dict (no Pydantic, no serialization errors)."""
+    fn = (p.filename or "").strip() or "image.jpg"
+    resolved = resolve_photo_filename(fn)
     return {
         "id": getattr(p, "id", 0),
-        "filename": (p.filename or "").strip() or "image.jpg",
+        "filename": resolved,
         "description": (p.description or "").strip() or "Photo",
         "display_order": p.display_order if p.display_order is not None else 0,
         "is_featured": bool(p.is_featured) if p.is_featured is not None else False,
+        "v": _photo_file_mtime(resolved),
+        "content_url": f"/api/apartment/photos/{getattr(p, 'id', 0)}/content",
     }
 
 
@@ -300,7 +362,7 @@ def get_apartment_photos(db: Session = Depends(get_db)):
             os.makedirs(static_photos_path, exist_ok=True)
         photo_files = [
             f for f in os.listdir(static_photos_path)
-            if f.lower().endswith((".png", ".jpg", ".jpeg", ".gif"))
+            if f.lower().endswith(PHOTO_FILE_EXTENSIONS)
         ]
         photo_files.sort()
     except OSError as e:
@@ -309,7 +371,7 @@ def get_apartment_photos(db: Session = Depends(get_db)):
 
     new_photos = []
     for idx, filename in enumerate(photo_files, 1):
-        description = PHOTO_DESCRIPTIONS.get(filename, f"Photo {idx}")
+        description = _lookup_photo_description(filename, idx)
         new_photos.append(Photo(
             filename=filename,
             description=description,
@@ -321,8 +383,6 @@ def get_apartment_photos(db: Session = Depends(get_db)):
     try:
         db.add_all(new_photos)
         db.commit()
-        db.refresh()  # ensure ids are loaded
-        # Re-query so we have persisted objects with ids
         ordered = db.query(Photo).order_by(Photo.display_order).all()
         return [_photo_to_dict(p) for p in ordered]
     except Exception as e:
@@ -331,12 +391,35 @@ def get_apartment_photos(db: Session = Depends(get_db)):
         return []
 
 
+@app.get("/api/apartment/photos/{photo_id}/content")
+def get_apartment_photo_content(photo_id: int, db: Session = Depends(get_db)):
+    """Serve photo bytes via API with no-store headers to bypass stale browser image cache."""
+    p = db.query(Photo).filter(Photo.id == photo_id).first()
+    if not p:
+        raise HTTPException(status_code=404, detail="Photo not found")
+    resolved = resolve_photo_filename((p.filename or "").strip())
+    path = os.path.join(STATIC_DIR, "photos", resolved)
+    if not os.path.isfile(path):
+        raise HTTPException(status_code=404, detail="Photo file not found")
+    media_type = mimetypes.guess_type(resolved)[0] or "application/octet-stream"
+    return FileResponse(
+        path=path,
+        media_type=media_type,
+        filename=resolved,
+        headers={
+            "Cache-Control": "no-store, no-cache, must-revalidate",
+            "Pragma": "no-cache",
+            "Expires": "0",
+        },
+    )
+
+
 @app.get("/api/apartment/photos-debug")
 def get_photos_debug():
     """Debug: show STATIC_DIR and whether photos dir exists (for Docker path issues)."""
     photos_path = os.path.join(STATIC_DIR, "photos")
     try:
-        files = [f for f in os.listdir(photos_path) if f.lower().endswith((".png", ".jpg", ".jpeg", ".gif"))] if os.path.isdir(photos_path) else []
+        files = [f for f in os.listdir(photos_path) if f.lower().endswith(PHOTO_FILE_EXTENSIONS)] if os.path.isdir(photos_path) else []
     except OSError:
         files = []
     return {
@@ -622,6 +705,8 @@ def create_reservation(reservation: schemas.ReservationCreate, db: Session = Dep
                 raise ValueError("Guest name, email, and phone are required")
             if reservation.check_in >= reservation.check_out:
                 raise ValueError("Check-in date must be before check-out date")
+            if reservation.guest_count is None or int(reservation.guest_count) < 1 or int(reservation.guest_count) > 6:
+                raise HTTPException(status_code=400, detail="Guest count must be between 1 and 6")
             availability_check = check_availability(reservation.check_in, reservation.check_out, db)
             if not availability_check["is_available"]:
                 conflicts = availability_check.get("conflicts", {})
@@ -661,8 +746,8 @@ def create_reservation(reservation: schemas.ReservationCreate, db: Session = Dep
         if not is_admin_block:
             try:
                 apartment_settings = db.query(Settings).first()
-                if apartment_settings:
-                    send_new_booking_notification_to_admin(db_reservation, apartment_settings)
+                send_new_booking_notification_to_admin(db_reservation, apartment_settings)
+                send_submission_email(db_reservation, apartment_settings)
             except Exception as email_err:
                 print(f"Reservation created but email notification failed: {email_err}")
 
@@ -787,6 +872,37 @@ Check-in: {getattr(s, 'check_in_time', '15:00')} | Check-out: {getattr(s, 'check
     ok = _send_resend_email(to, subject, html)
     if not ok:
         print(f"[EMAIL] Confirmation email to {to!r} was not sent (check logs above).")
+    return ok
+
+def send_submission_email(reservation, apartment_settings):
+    """Send a submission-received email to the guest via Resend (only for real guests)."""
+    if not _is_guest_reservation(reservation):
+        print("[EMAIL] Skipping submission email (admin block or not a guest reservation).")
+        return False
+    to = (getattr(reservation, "email", None) or "").strip()
+    if not to:
+        print("[EMAIL] Skipping submission email (no guest email).")
+        return False
+    s = apartment_settings or _default_settings()
+    subject = f"Reservation Received - {s.apartment_name}"
+    html = f"""
+<p>Dear {reservation.guest_name},</p>
+<p>Thank you! We received your reservation request and it is now pending review.</p>
+<p><strong>Reservation Details:</strong></p>
+<ul>
+<li>Check-in: {_fmt_date(getattr(reservation, 'check_in', None))}</li>
+<li>Check-out: {_fmt_date(getattr(reservation, 'check_out', None))}</li>
+<li>Guests: {getattr(reservation, 'guest_count', 1)}</li>
+<li>Estimated total: {(getattr(reservation, 'total_price', None) or 0):.0f} ILS</li>
+</ul>
+<p>We will email you again once your booking is confirmed or cancelled.</p>
+<p><strong>Payment:</strong> Payment is due in cash upon arrival (we do not accept credit cards).</p>
+<p>If you have any questions, contact us at {getattr(s, 'contact_email', '')} or {getattr(s, 'contact_phone', '')}.</p>
+<p>Best regards,<br>{s.apartment_name} Team</p>
+"""
+    ok = _send_resend_email(to, subject, html)
+    if not ok:
+        print(f"[EMAIL] Submission email to {to!r} was not sent (check logs above).")
     return ok
 
 def send_cancellation_email(reservation, apartment_settings):

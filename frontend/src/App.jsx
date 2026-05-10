@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react'
 import { BrowserRouter as Router, Routes, Route, Link, NavLink, useNavigate } from 'react-router-dom'
-import axios from 'axios'
 import Book from './pages/Book'
 import BookingSuccess from './pages/BookingSuccess'
 import Gallery from './pages/Gallery'
 import AdminDashboard from './pages/AdminDashboard'
 import UserDashboard from './pages/UserDashboard'
 import AuthModal from './components/AuthModal'
+import { staticPhotoUrl } from './photoUtils'
 import './App.css'
 
 function HomePage({ user }) {
@@ -19,57 +19,37 @@ function HomePage({ user }) {
   useEffect(() => {
     const fetchApartmentInfo = async () => {
       try {
-        console.log('Starting to fetch apartment info...');
-        
-        const response = await axios.get('/apartment', {
-          timeout: 10000,  // 10 seconds timeout
-          headers: {
-            'Accept': 'application/json'  // Explicitly request JSON
-          }
+        const res = await fetch(`/apartment?_=${Date.now()}`, {
+          cache: 'default',
+          credentials: 'same-origin',
+          headers: { Accept: 'application/json' },
         });
-        
-        console.log('Full Apartment Info Response:', JSON.stringify(response.data, null, 2));
-        console.log('Response Type:', typeof response.data);
-        console.log('Response Keys:', Object.keys(response.data));
-        
-        // Validate response data
-        if (!response.data) {
+        const data = await res.json().catch(() => null);
+
+        if (!res.ok) {
+          const detail = data?.detail;
+          throw new Error(
+            typeof detail === 'string'
+              ? detail
+              : detail
+                ? JSON.stringify(detail)
+                : res.statusText || 'Request failed'
+          );
+        }
+
+        if (!data) {
           throw new Error('No data received from server');
         }
-        
-        // More flexible settings check
-        if (!response.data.settings && !response.data.hasOwnProperty('settings')) {
-          console.error('Unexpected response structure:', response.data);
+
+        if (!data.settings && !Object.prototype.hasOwnProperty.call(data, 'settings')) {
           throw new Error('No settings found in response');
         }
-        
-        setApartment(response.data);
+
+        setApartment(data);
         setLoading(false);
       } catch (err) {
-        console.error('FULL Error Details:', err);
-        
-        // More detailed error logging
-        if (err.response) {
-          // The request was made and the server responded with a status code
-          console.error('Server Response Error:', {
-            status: err.response.status,
-            data: err.response.data,
-            headers: err.response.headers,
-            type: typeof err.response.data
-          });
-        } else if (err.request) {
-          // The request was made but no response was received
-          console.error('No response received:', err.request);
-        } else {
-          // Something happened in setting up the request
-          console.error('Error setting up request:', err.message);
-        }
-        
-        // Determine error message
-        const errorMessage = err.response?.data?.detail || 
-                             err.message || 
-                             'Failed to fetch apartment information';
-        
+        const errorMessage =
+          err.message || 'Failed to fetch apartment information';
         setError(errorMessage);
         setLoading(false);
       }
@@ -104,6 +84,13 @@ function HomePage({ user }) {
   if (!apartment || !apartment.settings) return null;
 
   const { settings, featured_photo } = apartment;
+  const heroSrc =
+    featured_photo &&
+    (
+      featured_photo.content_url
+        ? `${featured_photo.content_url}?v=${encodeURIComponent(String(featured_photo.v ?? ''))}`
+        : staticPhotoUrl(featured_photo.filename, featured_photo.v)
+    );
 
   // Format time from 24-hour to 12-hour format
   const formatTime = (time24) => {
@@ -122,10 +109,11 @@ function HomePage({ user }) {
     <>
       {/* Hero: full-width featured photo with overlay + headline + tagline + CTA */}
       <section className="home-hero" style={!featured_photo ? { background: 'linear-gradient(135deg, #0d9488 0%, #0f766e 100%)' } : undefined}>
-        {featured_photo && (
+        {featured_photo && heroSrc && (
           <img
+            key={`hero-${featured_photo.id}-${featured_photo.filename}-${featured_photo.v ?? ''}`}
             className="home-hero-image"
-            src={`/static/photos/${featured_photo.filename}`}
+            src={heroSrc}
             alt={featured_photo.description || 'Apartment'}
             onError={(e) => { e.target.style.display = 'none'; }}
           />

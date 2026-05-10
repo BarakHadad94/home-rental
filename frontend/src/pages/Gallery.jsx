@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import axios from 'axios';
+import { staticPhotoUrl } from '../photoUtils';
 
 export default function Gallery() {
   const [photos, setPhotos] = useState([]);
@@ -8,22 +8,38 @@ export default function Gallery() {
   const [selectedPhotoIndex, setSelectedPhotoIndex] = useState(null);
 
   useEffect(() => {
-    const fetchPhotos = async () => {
-      try {
-        const response = await axios.get('/api/apartment/photos', {
-          timeout: 10000
-        });
-        
-        setPhotos(response.data);
-        setLoading(false);
-      } catch (err) {
-        console.error('Failed to load photos:', err);
-        setError(`Failed to load photos: ${err.message}`);
-        setLoading(false);
-      }
-    };
+    const ac = new AbortController();
 
-    fetchPhotos();
+    (async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const res = await fetch(`/api/apartment/photos?_=${Date.now()}`, {
+          cache: 'default',
+          credentials: 'same-origin',
+          signal: ac.signal,
+          headers: { Accept: 'application/json' },
+        });
+        const raw = await res.json().catch(() => null);
+        if (ac.signal.aborted) return;
+        if (!res.ok) {
+          const msg =
+            (raw && typeof raw === 'object' && raw.detail) ||
+            res.statusText ||
+            'Failed to load photos';
+          throw new Error(typeof msg === 'string' ? msg : JSON.stringify(msg));
+        }
+        setPhotos(Array.isArray(raw) ? raw : []);
+      } catch (err) {
+        if (ac.signal.aborted) return;
+        console.error('Failed to load photos:', err);
+        setError(`Failed to load photos: ${err.message || 'unknown error'}`);
+      } finally {
+        if (!ac.signal.aborted) setLoading(false);
+      }
+    })();
+
+    return () => ac.abort();
   }, []);
 
   const handlePhotoClick = (index) => {
@@ -37,14 +53,14 @@ export default function Gallery() {
 
   const handleNextPhoto = (e) => {
     e.stopPropagation();
-    setSelectedPhotoIndex((prevIndex) => 
+    setSelectedPhotoIndex((prevIndex) =>
       prevIndex === photos.length - 1 ? 0 : prevIndex + 1
     );
   };
 
   const handlePrevPhoto = (e) => {
     e.stopPropagation();
-    setSelectedPhotoIndex((prevIndex) => 
+    setSelectedPhotoIndex((prevIndex) =>
       prevIndex === 0 ? photos.length - 1 : prevIndex - 1
     );
   };
@@ -55,51 +71,56 @@ export default function Gallery() {
   return (
     <div className="gallery-page">
       <h2 className="gallery-title">Apartment Gallery</h2>
-      
-      {/* Photo Grid */}
+
       <div className="gallery-grid">
-        {photos.map((photo, index) => (
-          <div
-            key={photo.id || index} 
-            className="gallery-card"
-            onClick={() => handlePhotoClick(index)}
-          >
-            <img
-              src={`/static/photos/${photo.filename}`} 
-              alt={photo.description}
-              className="gallery-image"
-              onError={(e) => {
-                console.error(`Failed to load image: ${photo.filename}`);
-                e.target.style.border = '2px solid red';
-                e.target.alt = `Failed to load: ${photo.filename}`;
-              }}
-            />
-            <div className="gallery-caption">
-              {photo.description}
+        {photos.map((photo, index) => {
+          const src =
+            photo.content_url
+              ? `${photo.content_url}?v=${encodeURIComponent(String(photo.v ?? ''))}`
+              : staticPhotoUrl(photo.filename, photo.v);
+          return (
+            <div
+              key={`${photo.id ?? index}-${photo.filename}-${photo.v ?? ''}`}
+              className="gallery-card"
+              onClick={() => handlePhotoClick(index)}
+            >
+              {src ? (
+                <img
+                  src={src}
+                  alt={photo.description}
+                  className="gallery-image"
+                  decoding="async"
+                  onError={(e) => {
+                    console.error(`Failed to load image: ${photo.filename}`);
+                    e.target.style.border = '2px solid red';
+                    e.target.alt = `Failed to load: ${photo.filename}`;
+                  }}
+                />
+              ) : (
+                <div className="gallery-image gallery-image-missing">Unavailable</div>
+              )}
+              <div className="gallery-caption">{photo.description}</div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
-      {/* Lightbox for selected photo */}
-      {selectedPhotoIndex !== null && (
-        <div 
-          className="gallery-lightbox"
-          onClick={handleCloseZoom}
-        >
-          <div 
+      {selectedPhotoIndex !== null && photos[selectedPhotoIndex] && (
+        <div className="gallery-lightbox" onClick={handleCloseZoom}>
+          <div
             className="gallery-lightbox-content"
             onClick={(e) => e.stopPropagation()}
           >
-            {/* Navigation and Close Buttons */}
             <div className="gallery-lightbox-nav">
-              <button 
+              <button
+                type="button"
                 onClick={handlePrevPhoto}
                 className="gallery-lightbox-arrow gallery-lightbox-arrow-left"
               >
                 ←
               </button>
-              <button 
+              <button
+                type="button"
                 onClick={handleNextPhoto}
                 className="gallery-lightbox-arrow gallery-lightbox-arrow-right"
               >
@@ -107,29 +128,30 @@ export default function Gallery() {
               </button>
             </div>
 
-            {/* Close Button */}
-            <button 
+            <button
+              type="button"
               onClick={handleCloseZoom}
               className="gallery-lightbox-close"
             >
               ✕
             </button>
 
-            {/* Image Container */}
             <div className="gallery-lightbox-image-wrap">
-              <img 
-                src={`/static/photos/${photos[selectedPhotoIndex].filename}`} 
+              <img
+                src={
+                  photos[selectedPhotoIndex].content_url
+                    ? `${photos[selectedPhotoIndex].content_url}?v=${encodeURIComponent(String(photos[selectedPhotoIndex].v ?? ''))}`
+                    : staticPhotoUrl(
+                        photos[selectedPhotoIndex].filename,
+                        photos[selectedPhotoIndex].v
+                      )
+                }
                 alt={photos[selectedPhotoIndex].description}
                 className="gallery-lightbox-image"
-                onError={(e) => {
-                  console.error(`Failed to load full image: ${photos[selectedPhotoIndex].filename}`);
-                  e.target.style.border = '2px solid red';
-                  e.target.alt = `Failed to load: ${photos[selectedPhotoIndex].filename}`;
-                }}
+                decoding="async"
               />
             </div>
 
-            {/* Description */}
             <div className="gallery-lightbox-caption">
               {photos[selectedPhotoIndex].description}
             </div>
@@ -139,4 +161,3 @@ export default function Gallery() {
     </div>
   );
 }
-

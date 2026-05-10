@@ -454,6 +454,15 @@
   display: block;
 }
 
+.gallery-image-missing {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.06);
+  color: #666;
+  font-size: 0.9rem;
+}
+
 .gallery-card:hover .gallery-image {
   transform: scale(1.08);
 }
@@ -653,7 +662,7 @@
 }
 
 .book-pricing-list-extra {
-  margin-top: 1rem;
+  margin-top: 1.5rem;
   padding-top: 0.75rem;
   border-top: 1px dashed #99f6e4;
 }

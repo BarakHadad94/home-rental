@@ -61,7 +61,7 @@ class Settings(Base):
     apartment_name = Column(String(100), default="Sea View Apartment")
     description = Column(Text, nullable=True)
     price_per_night = Column(Float, nullable=False)
-    max_guests = Column(Integer, default=4)
+    max_guests = Column(Integer, default=6)
     contact_email = Column(String(255), nullable=False)
     contact_phone = Column(String(20), nullable=True)
     check_in_time = Column(String(10), default="15:00")

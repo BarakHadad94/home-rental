@@ -25,7 +25,7 @@ class SettingsBase(BaseModel):
     apartment_name: str = "Sea View Apartment"
     description: Optional[str] = None
     price_per_night: float
-    max_guests: int = 4
+    max_guests: int = 6
     contact_email: str
     contact_phone: Optional[str] = None
     check_in_time: str = "15:00"

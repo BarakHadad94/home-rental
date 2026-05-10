@@ -30,16 +30,9 @@ function diffNights(startStr, endStr) {
 }
 
 function calculatePrice(nights, guests, checkIn, checkOut) {
-  // Base prices
-  const basePrices = {
-    1: 500,
-    2: 500,
-    3: 600,
-    4: 700
-  };
-
-  // Validate guests
-  const guestCount = Math.min(Math.max(guests, 1), 4);
+  // Base price is for 1-2 guests; each additional guest adds 100 ILS per night (up to 6).
+  const guestCount = Math.min(Math.max(guests, 1), 6);
+  const dayPrice = 500 + Math.max(guestCount - 2, 0) * 100;
 
   // Check for weekend/Friday nights
   let totalPrice = 0;
@@ -47,7 +40,6 @@ function calculatePrice(nights, guests, checkIn, checkOut) {
   const endDate = new Date(checkOut);
 
   while (currentDate < endDate) {
-    const dayPrice = basePrices[guestCount];
     const isFriday = currentDate.getDay() === 5; // 0=Sunday, 5=Friday
     const nightPrice = isFriday ? dayPrice + 100 : dayPrice;
     
@@ -280,13 +272,13 @@ export default function Book({ user }) {
     let nextValue = value;
 
     if (name === 'guest_count') {
-      // Keep typed guest count constrained to 1-4 (same as spinner arrows).
+      // Keep typed guest count constrained to 1-6 (same as spinner arrows).
       if (value === '') {
         nextValue = '';
       } else {
         const parsed = Number(value);
         if (Number.isFinite(parsed)) {
-          nextValue = Math.min(4, Math.max(1, Math.trunc(parsed)));
+          nextValue = Math.min(6, Math.max(1, Math.trunc(parsed)));
         }
       }
     }
@@ -392,8 +384,8 @@ export default function Book({ user }) {
       nextErrors.phone = 'Please enter your phone number.';
     }
     const guestsNum = Number(form.guest_count);
-    if (!Number.isFinite(guestsNum) || guestsNum < 1 || guestsNum > 4) {
-      nextErrors.guest_count = 'Guests must be between 1 and 4.';
+    if (!Number.isFinite(guestsNum) || guestsNum < 1 || guestsNum > 6) {
+      nextErrors.guest_count = 'Guests must be between 1 and 6.';
     }
 
     // If any errors, show near fields and stop
@@ -511,12 +503,8 @@ export default function Book({ user }) {
             <span className="book-pricing-value">500 ILS per night</span>
           </li>
           <li>
-            <span className="book-pricing-label">3 guests</span>
-            <span className="book-pricing-value">600 ILS per night</span>
-          </li>
-          <li>
-            <span className="book-pricing-label">4 guests</span>
-            <span className="book-pricing-value">700 ILS per night</span>
+            <span className="book-pricing-label">Extra guests (up to 6)</span>
+            <span className="book-pricing-value">+100 ILS per person</span>
           </li>
         </ul>
         <ul className="book-pricing-list book-pricing-list-extra">
@@ -672,7 +660,7 @@ export default function Book({ user }) {
                     type="number"
                     name="guest_count"
                     min={1}
-                    max={4}
+                    max={6}
                     value={form.guest_count}
                     onChange={onFormChange}
                   />
