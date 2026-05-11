@@ -4,7 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 from sqlalchemy import text
 from typing import Optional, List
-from database import create_tables, get_db
+from database import create_tables, get_db, SessionLocal
 from models import Settings, Photo, Reservation, User
 from password_utils import hash_password, verify_password
 import schemas
@@ -64,6 +64,28 @@ def startup_email_check():
         print("[EMAIL] RESEND_API_KEY is set; confirmation/cancel/admin emails will be sent.")
     else:
         print("[EMAIL] RESEND_API_KEY is NOT set; no emails will be sent. Set it in backend/.env and use env_file in docker-compose.")
+    _normalize_contact_email()
+
+def _normalize_contact_email():
+    """Ensure existing settings use the current public contact email."""
+    target_email = "yehudahadad12@gmail.com"
+    db = SessionLocal()
+    try:
+        settings = db.query(Settings).all()
+        changed = False
+        for s in settings:
+            current_email = (getattr(s, "contact_email", None) or "").strip()
+            if current_email != target_email:
+                s.contact_email = target_email
+                changed = True
+        if changed:
+            db.commit()
+            print(f"[SETTINGS] Normalized contact_email to {target_email}.")
+    except Exception as e:
+        db.rollback()
+        print(f"[SETTINGS] Failed normalizing contact_email: {e}")
+    finally:
+        db.close()
 
 # Add a root endpoint for testing
 @app.get("/")
@@ -112,7 +134,7 @@ def get_apartment_info(db: Session = Depends(get_db)):
                 description="A cozy apartment with beautiful views",
                 price_per_night=500,
                 max_guests=6,
-                contact_email="contact@sirbnb.com",
+                contact_email="yehudahadad12@gmail.com",
                 contact_phone="+972 50-123-4567",
                 address="Tel Aviv, Israel",
                 check_in_time="14:00",
@@ -690,7 +712,7 @@ def create_reservation(reservation: schemas.ReservationCreate, db: Session = Dep
                     raise HTTPException(status_code=404, detail="User not found")
             db_reservation = Reservation(
                 guest_name="admin",
-                email="admin@example.com",
+                email="barakhadad94@gmail.com",
                 phone="0000000000",
                 check_in=reservation.check_in,
                 check_out=reservation.check_out,
@@ -803,7 +825,7 @@ def _is_guest_reservation(reservation):
     """True if this is a real guest booking (not an admin block). No email for admin blocks."""
     name = (getattr(reservation, "guest_name", None) or "").strip()
     email = (getattr(reservation, "email", None) or "").strip()
-    return not (name == "admin" and email == "admin@example.com")
+    return not (name == "admin" and email == "barakhadad94@gmail.com")
 
 def _send_resend_email(to: str, subject: str, html: str) -> bool:
     """Send one email via Resend. Returns True on success."""
@@ -836,7 +858,7 @@ def _default_settings():
         address = "To be provided"
         check_in_time = "15:00"
         check_out_time = "11:00"
-        contact_email = "admin@example.com"
+        contact_email = "yehudahadad12@gmail.com"
         contact_phone = ""
     return D()
 
@@ -893,9 +915,9 @@ def send_submission_email(reservation, apartment_settings):
 <li>Check-in: {_fmt_date(getattr(reservation, 'check_in', None))}</li>
 <li>Check-out: {_fmt_date(getattr(reservation, 'check_out', None))}</li>
 <li>Guests: {getattr(reservation, 'guest_count', 1)}</li>
-<li>Estimated total: {(getattr(reservation, 'total_price', None) or 0):.0f} ILS</li>
+<li>Total to pay: {(getattr(reservation, 'total_price', None) or 0):.0f} ILS</li>
 </ul>
-<p>We will email you again once your booking is confirmed or cancelled.</p>
+<p>We will email you again soon once your booking is confirmed or cancelled.</p>
 <p><strong>Payment:</strong> Payment is due in cash upon arrival (we do not accept credit cards).</p>
 <p>If you have any questions, contact us at {getattr(s, 'contact_email', '')} or {getattr(s, 'contact_phone', '')}.</p>
 <p>Best regards,<br>{s.apartment_name} Team</p>
@@ -927,12 +949,8 @@ def send_cancellation_email(reservation, apartment_settings):
     return _send_resend_email(to, subject, html)
 
 def send_new_booking_notification_to_admin(reservation, apartment_settings):
-    """Send an email to the admin when a new guest booking is made. Uses contact_email or admin@example.com."""
-    to = ""
-    if apartment_settings:
-        to = (getattr(apartment_settings, "contact_email", None) or "").strip()
-    if not to:
-        to = "admin@example.com"
+    """Send an email to admin when a new guest booking is made."""
+    to = "barakhadad94@gmail.com"
     name = getattr(apartment_settings, "apartment_name", None) or "Apartment"
     subject = f"New reservation – {name}"
     html = f"""
@@ -1061,7 +1079,7 @@ def admin_login(
     if not user and username == "admin":
         user = User(
             username="admin",
-            email="admin@example.com",
+            email="barakhadad94@gmail.com",
             password=hash_password("admin"),
         )
         db.add(user)

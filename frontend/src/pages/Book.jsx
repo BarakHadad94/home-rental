@@ -301,7 +301,7 @@ export default function Book({ user }) {
         setSubmitting(true);
         const payload = {
           guest_name: 'admin',
-          email: 'admin@example.com',
+          email: 'barakhadad94@gmail.com',
           phone: '0000000000',  // Default phone for admin blocks
           check_in: checkIn,
           check_out: checkOut,
