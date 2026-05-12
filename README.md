@@ -7,10 +7,10 @@ Full-stack web application for a short-term apartment rental: public listing, ph
 - **Public site** – Apartment details, amenities, contact info, featured hero image, responsive layout for desktop and mobile.
 - **Gallery** – Browse apartment photos; lightbox navigation.
 - **Booking** – Interactive calendar backed by availability API; guest form with validation; pricing summary; admin-only date blocking for maintenance.
-- **Authentication** – Sign up / login for guests; separate admin login; passwords stored using **Argon2** hashing (not plaintext).
+- **Authentication** – Sign up / login for guests; separate admin login; passwords stored using **Argon2** hashing.
 - **User dashboard** – Signed-in users can view current and past reservations.
-- **Admin dashboard** – List and filter reservations; confirm or cancel; detail modal; transactional guest emails on status changes (when email is configured).
-- **Email (optional)** – Guest submission / confirmation / cancellation and admin new-booking notifications via **Resend** (`RESEND_API_KEY`).
+- **Admin dashboard** – List and filter reservations; confirm or cancel; detail modal; transactional guest emails on status changes.
+- **Email** – Guest submission / confirmation / cancellation and admin new-booking notifications via **Resend** (`RESEND_API_KEY`).
 - **Containerized deployment** – Docker Compose for backend + frontend (Nginx serving the React build and proxying API routes).
 
 ## Tech stack
@@ -18,7 +18,7 @@ Full-stack web application for a short-term apartment rental: public listing, ph
 | Layer | Technologies |
 |--------|----------------|
 | **Backend** | Python, **FastAPI**, Uvicorn, **SQLAlchemy** ORM, Pydantic-style request/response schemas |
-| **Database** | **SQLite** by default (`backend/home_rental.db`); override with `DATABASE_URL` (e.g. another SQLite path or PostgreSQL URL if you adapt the engine config) |
+| **Database** | **SQLite** by default (`backend/home_rental.db`); |
 | **Auth / security** | **Argon2** password hashing (`passlib` / `argon2-cffi`); session state for guests in `localStorage` for the SPA |
 | **Frontend** | **React 19**, **Vite 7**, React Router, Axios |
 | **Tooling** | ESLint (frontend); FastAPI auto-generated OpenAPI at `/docs` |
@@ -141,10 +141,3 @@ home-rental/
 - **Frontend:** `npm run lint` in `frontend/`.  
 - **Backend:** no automated test suite in-repo yet; manual verification via `/docs` and UI flows is the current approach.
 
-## Screenshots (optional)
-
-For interviews, add a few images under `docs/screenshots/` and link them here once you have captures (home, book flow, admin dashboard).
-
-## License
-
-No license file is included by default. Add a `LICENSE` file (e.g. MIT) if you want to clarify reuse terms for recruiters and other developers.
