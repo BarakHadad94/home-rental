@@ -356,6 +356,7 @@ def _photo_to_dict(p):
 
 
 @app.get("/api/apartment/photos")
+@app.get("/apartment/photos")
 def get_apartment_photos(db: Session = Depends(get_db)):
     """Get all apartment photos ordered by display order. Returns plain JSON list (no schema validation)."""
     try:
@@ -414,6 +415,7 @@ def get_apartment_photos(db: Session = Depends(get_db)):
 
 
 @app.get("/api/apartment/photos/{photo_id}/content")
+@app.get("/apartment/photos/{photo_id}/content")
 def get_apartment_photo_content(photo_id: int, db: Session = Depends(get_db)):
     """Serve photo bytes via API with no-store headers to bypass stale browser image cache."""
     p = db.query(Photo).filter(Photo.id == photo_id).first()

@@ -72,7 +72,7 @@ export default function Login({ onLogin, isAdmin = false }) {
   };
 
   return (
-    <div style={{ maxWidth: 400, margin: 'auto', padding: 20 }}>
+    <div style={{ maxWidth: 400, width: '94vw', margin: 'auto', padding: 20, boxSizing: 'border-box' }}>
       <h2>{isAdmin ? 'Admin Login' : 'Login'}</h2>
       <form onSubmit={handleSubmit}>
         <div style={{ marginBottom: 15 }}>

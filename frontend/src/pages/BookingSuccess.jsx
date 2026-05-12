@@ -4,6 +4,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 export default function BookingSuccess() {
   const location = useLocation();
   const navigate = useNavigate();
+  const isMobile = window.innerWidth <= 576;
 
   // Extract booking details from location state
   const { 
@@ -37,22 +38,22 @@ export default function BookingSuccess() {
       flexDirection: 'column',
       alignItems: 'center',
       justifyContent: 'center',
-      height: '100vh',
+      minHeight: '100vh',
       textAlign: 'center',
-      padding: '20px',
+      padding: isMobile ? '12px' : '20px',
       backgroundColor: '#f0f8ff'
     }}>
       <div style={{
         backgroundColor: 'white',
-        padding: '40px',
+        padding: isMobile ? '20px' : '40px',
         borderRadius: '15px',
         boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
         maxWidth: '500px',
         width: '100%'
       }}>
-        <h1 style={{ color: '#4CAF50', marginBottom: '20px' }}>Booking Submitted!</h1>
+        <h1 style={{ color: '#4CAF50', marginBottom: '20px', fontSize: isMobile ? '1.5rem' : '2rem' }}>Booking Submitted!</h1>
         
-        <p style={{ fontSize: '18px', marginBottom: '15px' }}>
+        <p style={{ fontSize: isMobile ? '16px' : '18px', marginBottom: '15px' }}>
           <strong>Welcome, {guest_name}!</strong>
         </p>
         

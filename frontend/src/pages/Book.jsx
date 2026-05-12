@@ -180,7 +180,8 @@ export default function Book({ user }) {
     for (let day = 1; day <= daysInMonth; day++) {
       const dateObj = new Date(year, month - 1, day);
       const dateStr = formatDate(dateObj);
-      const isPast = dateObj < new Date(today.getFullYear(), today.getMonth(), today.getDate());
+      const now = new Date();
+      const isPast = dateObj < new Date(now.getFullYear(), now.getMonth(), now.getDate());
       const isAvail = availabilityMap[dateStr]?.is_available === true;
       cells.push({ type: 'day', day, dateStr, isPast, isAvail });
     }
@@ -313,7 +314,7 @@ export default function Book({ user }) {
           is_admin_block: true
         };
         
-        const response = await axios.post('/api/reservations', payload);
+        await axios.post('/api/reservations', payload);
         
         // Show admin-specific success message immediately
         setSubmissionMessage('Dates successfully blocked! These dates are now unavailable for booking.');
@@ -412,7 +413,7 @@ export default function Book({ user }) {
         is_admin_block: false
       };
       
-      const response = await axios.post('/api/reservations', payload);
+      await axios.post('/api/reservations', payload);
       
       // Navigate to success page with booking details
       navigate('/booking-success', {
@@ -483,8 +484,9 @@ export default function Book({ user }) {
   };
 
   const prevDisabled = useMemo(() => {
+    const now = new Date();
     const curYM = year * 100 + month;
-    const todayYM = today.getFullYear() * 100 + (today.getMonth() + 1);
+    const todayYM = now.getFullYear() * 100 + (now.getMonth() + 1);
     return curYM <= todayYM;
   }, [year, month]);
 

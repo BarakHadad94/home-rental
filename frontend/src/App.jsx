@@ -9,7 +9,7 @@ import AuthModal from './components/AuthModal'
 import { staticPhotoUrl } from './photoUtils'
 import './App.css'
 
-function HomePage({ user }) {
+function HomePage() {
   const [apartment, setApartment] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -58,7 +58,7 @@ function HomePage({ user }) {
     fetchApartmentInfo();
   }, []);
 
-  const handleAdminAccess = (e) => {
+  const handleAdminAccess = () => {
     const currentTime = new Date().getTime();
     
     // Reset touches if too much time has passed between touches
@@ -91,16 +91,6 @@ function HomePage({ user }) {
         ? `${featured_photo.content_url}?v=${encodeURIComponent(String(featured_photo.v ?? ''))}`
         : staticPhotoUrl(featured_photo.filename, featured_photo.v)
     );
-
-  // Format time from 24-hour to 12-hour format
-  const formatTime = (time24) => {
-    if (!time24) return '';
-    const [hours, minutes] = time24.split(':');
-    const hour = parseInt(hours);
-    const ampm = hour >= 12 ? 'PM' : 'AM';
-    const hour12 = hour % 12 || 12;
-    return `${hour12} ${ampm}`;
-  };
 
   const tagline = settings.description ? (settings.description.split('.')[0] + (settings.description.includes('.') ? '.' : '')) : '';
   const introText = settings.description && settings.description.includes('.') ? settings.description.split('.').slice(1).join('.').trim() : '';
@@ -176,6 +166,7 @@ function AppContent() {
   const [isAdmin, setIsAdmin] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [authIsAdmin, setAuthIsAdmin] = useState(false);
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
   useEffect(() => {
     // First entry (new tab/window): no session yet → start logged out. Refresh: restore login from localStorage.
@@ -196,6 +187,7 @@ function AppContent() {
   const handleLogin = (userData) => {
     setUser(userData);
     setIsAdmin(userData.is_admin || userData.username === 'admin');
+    setMobileNavOpen(false);
   };
 
   const handleLogout = () => {
@@ -203,6 +195,7 @@ function AppContent() {
     localStorage.removeItem('isAdmin');
     setUser(null);
     setIsAdmin(false);
+    setMobileNavOpen(false);
     navigate('/');
   };
 
@@ -214,7 +207,22 @@ function AppContent() {
   return (
       <div className="app-layout">
         <header className="app-header">
-          <nav className="app-header-nav">
+          <button
+            type="button"
+            className="app-mobile-nav-toggle btn-secondary"
+            onClick={() => setMobileNavOpen((prev) => !prev)}
+            aria-expanded={mobileNavOpen}
+            aria-controls="app-main-nav"
+          >
+            Menu
+          </button>
+          <nav
+            id="app-main-nav"
+            className={`app-header-nav ${mobileNavOpen ? 'is-open' : ''}`}
+            onClick={(e) => {
+              if (e.target.tagName === 'A') setMobileNavOpen(false);
+            }}
+          >
             <NavLink to="/" end className={({ isActive }) => isActive ? 'active' : ''}>Home</NavLink>
             <span className="app-nav-divider" aria-hidden="true" />
             <NavLink to="/book" className={({ isActive }) => isActive ? 'active' : ''}>Book</NavLink>
@@ -247,7 +255,7 @@ function AppContent() {
 
         <main style={{ flex: 1 }}>
         <Routes>
-          <Route path="/" element={<HomePage user={user} />} />
+          <Route path="/" element={<HomePage />} />
           <Route path="/book" element={<Book user={user} />} />
           <Route path="/booking-success" element={<BookingSuccess />} />
           <Route path="/gallery" element={<Gallery />} />

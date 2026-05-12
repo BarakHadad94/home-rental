@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import axios from 'axios';
 
 const ReservationAdmin = () => {
@@ -21,7 +21,7 @@ const ReservationAdmin = () => {
       const response = await axios.get('/reservations');
       setReservations(response.data);
       setLoading(false);
-    } catch (err) {
+    } catch {
       setError('Failed to fetch reservations');
       setLoading(false);
     }
@@ -35,7 +35,7 @@ const ReservationAdmin = () => {
       fetchReservations();
       // Close the detailed view if it was open
       setSelectedReservation(null);
-    } catch (err) {
+    } catch {
       setError('Failed to update reservation status');
     }
   };

@@ -10,7 +10,6 @@ function formatDate(dateString) {
 }
 
 export default function AdminDashboard() {
-  const [reservations, setReservations] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [baseReservations, setBaseReservations] = useState([]);
@@ -35,7 +34,7 @@ export default function AdminDashboard() {
       setBaseReservations(sorted);
       setLoading(false);
       return sorted;
-    } catch (err) {
+    } catch {
       setError('Failed to fetch reservations');
       setLoading(false);
       return [];
@@ -210,6 +209,62 @@ export default function AdminDashboard() {
     );
   };
 
+  const renderActionButtons = (reservation) => (
+    <>
+      {isAdminBlock(reservation) ? (
+        <>
+          {reservation.status === 'cancelled' && (
+            <button 
+              onClick={(e) => {
+                e.stopPropagation();
+                handleStatusAction(reservation, 'confirmed');
+              }}
+              style={{ marginRight: 5, backgroundColor: 'green', color: 'white' }}
+            >
+              Confirm
+            </button>
+          )}
+          {reservation.status !== 'cancelled' && (
+            <button 
+              onClick={(e) => {
+                e.stopPropagation();
+                handleStatusAction(reservation, 'cancelled');
+              }}
+              style={{ backgroundColor: 'red', color: 'white' }}
+            >
+              Cancel
+            </button>
+          )}
+        </>
+      ) : (
+        <>
+          {reservation.status !== 'confirmed' && (
+            <button 
+              onClick={(e) => {
+                e.stopPropagation();
+                handleStatusAction(reservation, 'confirmed');
+              }}
+              style={{ marginRight: 5, backgroundColor: 'green', color: 'white' }}
+            >
+              Confirm
+            </button>
+          )}
+          {reservation.status !== 'cancelled' && (
+            <button 
+              onClick={(e) => {
+                e.stopPropagation();
+                handleStatusAction(reservation, 'cancelled');
+              }}
+              style={{ backgroundColor: 'red', color: 'white' }}
+            >
+              Cancel
+            </button>
+          )}
+        </>
+      )}
+    </>
+  );
+
   const ReservationDetailsModal = ({ reservation, onClose }) => {
     if (!reservation) return null;
 
@@ -230,7 +285,8 @@ export default function AdminDashboard() {
           backgroundColor: 'white',
           padding: '20px',
           borderRadius: '8px',
-          width: '500px',
+          width: '92vw',
+          maxWidth: '500px',
           maxHeight: '80%',
           overflowY: 'auto'
         }}>
@@ -255,14 +311,14 @@ export default function AdminDashboard() {
   };
 
   return (
-    <div style={{ maxWidth: 800, margin: 'auto', padding: 20 }}>
+    <div className="dashboard-page admin-dashboard-page">
       <h1 style={{ textAlign: 'center' }}>Reservation Management</h1>
 
       {/* Current Reservations Section */}
       <h2 style={{ fontSize: '24px', marginTop: 30, marginBottom: 15, fontWeight: '600' }}>Current Reservations</h2>
       
       {/* Current Reservations Filters */}
-      <div style={{ 
+      <div className="admin-filter-bar" style={{ 
         display: 'flex', 
         gap: 10, 
         marginBottom: 20,
@@ -274,6 +330,7 @@ export default function AdminDashboard() {
         backgroundColor: '#f9f9f9'
       }}>
         <select 
+          className="admin-filter-input"
           value={currentFilter.status} 
           onChange={(e) => setCurrentFilter(prev => ({ ...prev, status: e.target.value }))}
         >
@@ -283,27 +340,30 @@ export default function AdminDashboard() {
           <option value="cancelled">Cancelled</option>
         </select>
 
-        <label>
+        <label className="admin-filter-label">
           Start Date:
           <input 
+            className="admin-filter-input"
             type="date" 
             value={currentFilter.startDate}
             onChange={(e) => setCurrentFilter(prev => ({ ...prev, startDate: e.target.value }))}
           />
         </label>
 
-        <label>
+        <label className="admin-filter-label">
           End Date:
           <input 
+            className="admin-filter-input"
             type="date" 
             value={currentFilter.endDate}
             onChange={(e) => setCurrentFilter(prev => ({ ...prev, endDate: e.target.value }))}
           />
         </label>
 
-        <label>
+        <label className="admin-filter-label">
           Search by Name:
           <input 
+            className="admin-filter-input"
             type="text" 
             placeholder="Enter name..."
             value={currentFilter.name}
@@ -346,103 +406,65 @@ export default function AdminDashboard() {
       {/* Current Reservations Table */}
       {!loading && (
         <div style={{ marginBottom: 50 }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', boxShadow: '0 1px 3px rgba(0,0,0,0.08)' }}>
-            <thead>
-              <tr style={{ backgroundColor: '#f4f4f4' }}>
-                <th>Guest Name</th>
-                <th>Dates</th>
-                <th>Guests</th>
-                <th>Total Price</th>
-                <th>Status</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {currentReservations.map((reservation) => (
-                <tr 
-                  key={reservation.id}
-                  style={{ 
-                    borderBottom: '1px solid #ddd',
-                    cursor: 'pointer',
-                    backgroundColor: 'white'
-                  }}
-                  onClick={() => setSelectedReservation(reservation)}
-                >
-                  <td>{reservation.guest_name}</td>
-                  <td>
-                    {formatDate(reservation.check_in)} - 
-                    {formatDate(reservation.check_out)}
-                  </td>
-                  <td>{reservation.guest_count}</td>
-                  <td>{reservation.total_price} ILS</td>
-                  <td>{renderStatus(reservation.status, reservation.check_out)}</td>
-                  <td onClick={(e) => e.stopPropagation()}>
-                    {/* For admin blocks: show Cancel if confirmed, or Confirm if cancelled */}
-                    {isAdminBlock(reservation) ? (
-                      <>
-                        {reservation.status === 'cancelled' && (
-                          <button 
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleStatusAction(reservation, 'confirmed');
-                            }}
-                            style={{ marginRight: 5, backgroundColor: 'green', color: 'white' }}
-                          >
-                            Confirm
-                          </button>
-                        )}
-                        {reservation.status !== 'cancelled' && (
-                          <button 
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleStatusAction(reservation, 'cancelled');
-                            }}
-                            style={{ backgroundColor: 'red', color: 'white' }}
-                          >
-                            Cancel
-                          </button>
-                        )}
-                      </>
-                    ) : (
-                      <>
-                        {/* For regular reservations: show Confirm if not confirmed */}
-                        {reservation.status !== 'confirmed' && (
-                          <button 
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleStatusAction(reservation, 'confirmed');
-                            }}
-                            style={{ marginRight: 5, backgroundColor: 'green', color: 'white' }}
-                          >
-                            Confirm
-                          </button>
-                        )}
-                        {/* Show Cancel for all non-cancelled reservations */}
-                        {reservation.status !== 'cancelled' && (
-                          <button 
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleStatusAction(reservation, 'cancelled');
-                            }}
-                            style={{ backgroundColor: 'red', color: 'white' }}
-                          >
-                            Cancel
-                          </button>
-                        )}
-                      </>
-                    )}
-                  </td>
+          <div className="dashboard-table-wrap">
+            <table className="dashboard-table admin-table">
+              <thead>
+                <tr style={{ backgroundColor: '#f4f4f4' }}>
+                  <th>Guest Name</th>
+                  <th>Dates</th>
+                  <th>Guests</th>
+                  <th>Total Price</th>
+                  <th>Status</th>
+                  <th>Actions</th>
                 </tr>
-              ))}
-              {currentReservations.length === 0 && (
-                <tr>
-                  <td colSpan="6" style={{ padding: 12, textAlign: 'center', color: '#666' }}>
-                    No current reservations match the filter.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {currentReservations.map((reservation) => (
+                  <tr 
+                    key={reservation.id}
+                    style={{ 
+                      borderBottom: '1px solid #ddd',
+                      cursor: 'pointer',
+                      backgroundColor: 'white'
+                    }}
+                    onClick={() => setSelectedReservation(reservation)}
+                  >
+                    <td>{reservation.guest_name}</td>
+                    <td>
+                      {formatDate(reservation.check_in)} - 
+                      {formatDate(reservation.check_out)}
+                    </td>
+                    <td>{reservation.guest_count}</td>
+                    <td>{reservation.total_price} ILS</td>
+                    <td>{renderStatus(reservation.status, reservation.check_out)}</td>
+                    <td onClick={(e) => e.stopPropagation()}>{renderActionButtons(reservation)}</td>
+                  </tr>
+                ))}
+                {currentReservations.length === 0 && (
+                  <tr>
+                    <td colSpan="6" style={{ padding: 12, textAlign: 'center', color: '#666' }}>
+                      No current reservations match the filter.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+          <div className="mobile-reservation-cards">
+            {currentReservations.map((reservation) => (
+              <article key={`current-card-${reservation.id}`} className="mobile-reservation-card" onClick={() => setSelectedReservation(reservation)}>
+                <p><strong>Guest:</strong> {reservation.guest_name}</p>
+                <p><strong>Dates:</strong> {formatDate(reservation.check_in)} - {formatDate(reservation.check_out)}</p>
+                <p><strong>Guests:</strong> {reservation.guest_count}</p>
+                <p><strong>Total:</strong> {reservation.total_price} ILS</p>
+                <p><strong>Status:</strong> {renderStatus(reservation.status, reservation.check_out)}</p>
+                <div className="mobile-card-actions" onClick={(e) => e.stopPropagation()}>
+                  {renderActionButtons(reservation)}
+                </div>
+              </article>
+            ))}
+            {currentReservations.length === 0 && <p>No current reservations match the filter.</p>}
+          </div>
         </div>
       )}
 
@@ -452,7 +474,7 @@ export default function AdminDashboard() {
           <h2 style={{ fontSize: '24px', marginTop: 40, marginBottom: 15, fontWeight: '600' }}>Past Reservations</h2>
           
           {/* Past Reservations Filters */}
-          <div style={{ 
+          <div className="admin-filter-bar" style={{ 
             display: 'flex', 
             gap: 10, 
             marginBottom: 12,
@@ -464,6 +486,7 @@ export default function AdminDashboard() {
             backgroundColor: '#f7f7f7'
           }}>
           <select 
+            className="admin-filter-input"
             value={pastFilter.status} 
             onChange={(e) => setPastFilter(prev => ({ ...prev, status: e.target.value }))}
           >
@@ -473,27 +496,30 @@ export default function AdminDashboard() {
             <option value="cancelled">Cancelled</option>
           </select>
 
-          <label>
+          <label className="admin-filter-label">
             Start Date:
             <input 
+              className="admin-filter-input"
               type="date" 
               value={pastFilter.startDate}
               onChange={(e) => setPastFilter(prev => ({ ...prev, startDate: e.target.value }))}
             />
           </label>
 
-          <label>
+          <label className="admin-filter-label">
             End Date:
             <input 
+              className="admin-filter-input"
               type="date" 
               value={pastFilter.endDate}
               onChange={(e) => setPastFilter(prev => ({ ...prev, endDate: e.target.value }))}
             />
           </label>
 
-          <label>
+          <label className="admin-filter-label">
             Search by Name:
             <input 
+              className="admin-filter-input"
               type="text" 
               placeholder="Enter name..."
               value={pastFilter.name}
@@ -531,50 +557,65 @@ export default function AdminDashboard() {
 
         {/* Past Reservations Table */}
         <div>
-          <table style={{ width: '100%', borderCollapse: 'collapse', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
-            <thead>
-              <tr style={{ backgroundColor: '#f0f0f0' }}>
-                <th>Guest Name</th>
-                <th>Dates</th>
-                <th>Guests</th>
-                <th>Total Price</th>
-                <th>Status</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {pastReservations.map((reservation) => (
-                <tr 
-                  key={reservation.id}
-                  style={{ 
-                    borderBottom: '1px solid #e6e6e6',
-                    cursor: 'pointer',
-                    backgroundColor: '#fafafa'
-                  }}
-                  onClick={() => setSelectedReservation(reservation)}
-                >
-                  <td style={{ color: '#444' }}>{reservation.guest_name}</td>
-                  <td style={{ color: '#444' }}>
-                    {formatDate(reservation.check_in)} - 
-                    {formatDate(reservation.check_out)}
-                  </td>
-                  <td style={{ color: '#444' }}>{reservation.guest_count}</td>
-                  <td style={{ color: '#444' }}>{reservation.total_price} ILS</td>
-                  <td>{renderStatus(reservation.status, reservation.check_out)}</td>
-                  <td onClick={(e) => e.stopPropagation()}>
-                    <span style={{ color: '#888', fontStyle: 'italic' }}>No actions available</span>
-                  </td>
+          <div className="dashboard-table-wrap">
+            <table className="dashboard-table admin-table">
+              <thead>
+                <tr style={{ backgroundColor: '#f0f0f0' }}>
+                  <th>Guest Name</th>
+                  <th>Dates</th>
+                  <th>Guests</th>
+                  <th>Total Price</th>
+                  <th>Status</th>
+                  <th>Actions</th>
                 </tr>
-              ))}
-              {pastReservations.length === 0 && (
-                <tr>
-                  <td colSpan="6" style={{ padding: 12, textAlign: 'center', color: '#666' }}>
-                    No past reservations match the filter.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {pastReservations.map((reservation) => (
+                  <tr 
+                    key={reservation.id}
+                    style={{ 
+                      borderBottom: '1px solid #e6e6e6',
+                      cursor: 'pointer',
+                      backgroundColor: '#fafafa'
+                    }}
+                    onClick={() => setSelectedReservation(reservation)}
+                  >
+                    <td style={{ color: '#444' }}>{reservation.guest_name}</td>
+                    <td style={{ color: '#444' }}>
+                      {formatDate(reservation.check_in)} - 
+                      {formatDate(reservation.check_out)}
+                    </td>
+                    <td style={{ color: '#444' }}>{reservation.guest_count}</td>
+                    <td style={{ color: '#444' }}>{reservation.total_price} ILS</td>
+                    <td>{renderStatus(reservation.status, reservation.check_out)}</td>
+                    <td onClick={(e) => e.stopPropagation()}>
+                      <span style={{ color: '#888', fontStyle: 'italic' }}>No actions available</span>
+                    </td>
+                  </tr>
+                ))}
+                {pastReservations.length === 0 && (
+                  <tr>
+                    <td colSpan="6" style={{ padding: 12, textAlign: 'center', color: '#666' }}>
+                      No past reservations match the filter.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+          <div className="mobile-reservation-cards">
+            {pastReservations.map((reservation) => (
+              <article key={`past-card-${reservation.id}`} className="mobile-reservation-card" onClick={() => setSelectedReservation(reservation)}>
+                <p><strong>Guest:</strong> {reservation.guest_name}</p>
+                <p><strong>Dates:</strong> {formatDate(reservation.check_in)} - {formatDate(reservation.check_out)}</p>
+                <p><strong>Guests:</strong> {reservation.guest_count}</p>
+                <p><strong>Total:</strong> {reservation.total_price} ILS</p>
+                <p><strong>Status:</strong> {renderStatus(reservation.status, reservation.check_out)}</p>
+                <p style={{ color: '#666', marginBottom: 0 }}>No actions available</p>
+              </article>
+            ))}
+            {pastReservations.length === 0 && <p>No past reservations match the filter.</p>}
+          </div>
         </div>
         </>
       )}
@@ -604,6 +645,7 @@ export default function AdminDashboard() {
             padding: '24px 28px',
             borderRadius: '12px',
             boxShadow: '0 4px 20px rgba(0,0,0,0.15)',
+            width: '92vw',
             maxWidth: 400,
             textAlign: 'center'
           }}>
@@ -615,7 +657,7 @@ export default function AdminDashboard() {
             }}>
               {confirmModal.message}
             </p>
-            <div style={{ display: 'flex', gap: 12, justifyContent: 'center' }}>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, justifyContent: 'center' }}>
               <button
                 onClick={() => setConfirmModal(null)}
                 style={{

@@ -64,6 +64,10 @@
   box-shadow: none;
 }
 
+.app-mobile-nav-toggle {
+  display: none;
+}
+
 .app-header-auth .username {
   color: var(--color-text, #1a1a1a);
   font-weight: 500;
@@ -280,12 +284,6 @@
   white-space: nowrap;
   flex-shrink: 0;
 }
-@media (max-width: 700px) {
-  .home-amenities {
-    flex-wrap: wrap;
-    justify-content: center;
-  }
-}
 
 /* Visit & contact: two blocks with divider, minimal card */
 .home-visit-contact {
@@ -342,23 +340,6 @@
   color: var(--color-text, #1a1a1a);
   font-weight: 700;
   margin-right: 0.35rem;
-}
-@media (max-width: 600px) {
-  .home-visit-contact {
-    grid-template-columns: 1fr;
-    padding: 1.5rem;
-  }
-  .home-visit-contact .block {
-    padding: 0.75rem 0 0 0;
-  }
-  .home-visit-contact .block:first-child {
-    padding-top: 0;
-  }
-  .home-visit-contact .block-divider {
-    width: 100%;
-    height: 1px;
-    min-height: 0;
-  }
 }
 
 /* Amenities: soft card with pill list (one row, contained) */
@@ -584,11 +565,6 @@
   font-size: 0.92rem;
 }
 
-@media (max-width: 780px) {
-  .gallery-grid {
-    grid-template-columns: 1fr;
-  }
-}
 
 /* Book page: soft visual alignment with Home/Gallery */
 .book-page {
@@ -755,7 +731,7 @@
 
 .book-calendar-grid {
   display: grid;
-  grid-template-columns: repeat(7, 1fr);
+  grid-template-columns: repeat(7, minmax(0, 1fr));
   gap: 6px;
   max-width: 420px;
   width: 100%;
@@ -769,6 +745,9 @@
 }
 
 .book-day-cell {
+  width: 100%;
+  min-width: 0;
+  padding: 0;
   height: 44px;
   border-radius: 8px;
   border: 1px solid #ddd;
@@ -917,13 +896,177 @@
   color: #991b1b;
 }
 
-@media (max-width: 680px) {
+.book-selection-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.book-selection-nights {
+  margin-left: 0;
+}
+
+.book-clear-btn {
+  margin-left: 0;
+}
+
+@media (max-width: 1024px) {
+  .app-header-nav {
+    gap: 2rem;
+    padding-left: 1rem;
+  }
+
+  .home-page,
+  .book-page,
+  .gallery-page {
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+}
+
+@media (max-width: 768px) {
+  .app-header {
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    padding: 0.75rem 1rem;
+  }
+
+  .app-mobile-nav-toggle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 44px;
+    padding: 0.5rem 0.9rem;
+  }
+
+  .app-header-nav {
+    display: none;
+    width: 100%;
+    order: 3;
+    gap: 0.35rem;
+    padding: 0.5rem 0;
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .app-header-nav.is-open {
+    display: flex;
+  }
+
+  .app-header-nav a {
+    padding: 0.65rem 0.5rem;
+    border-radius: 8px;
+  }
+
+  .app-nav-divider {
+    display: none;
+  }
+
+  .app-header-auth {
+    margin-left: auto;
+  }
+
+  .home-amenities {
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  .home-visit-contact {
+    grid-template-columns: 1fr;
+    padding: 1.25rem;
+    gap: 0.25rem;
+  }
+
+  .home-visit-contact .block {
+    width: 100%;
+    min-width: 0;
+    padding: 0.5rem 0 0;
+  }
+
+  .home-visit-contact .block:first-child {
+    padding-top: 0;
+  }
+
+  .home-visit-contact .block-divider {
+    width: 100%;
+    height: 1px;
+    min-height: 0;
+  }
+
+  .home-included-card h3 {
+    transform: none;
+  }
+
+  .gallery-grid {
+    grid-template-columns: 1fr;
+  }
+
   .book-page {
     padding: 0.75rem 1rem 1.5rem;
   }
+
+  .book-calendar-wrap {
+    padding: 0.75rem;
+  }
+
+  .book-calendar-header {
+    width: 100%;
+    justify-content: space-between;
+  }
+
   .book-calendar-month {
-    min-width: 180px;
+    min-width: 0;
+    flex: 1;
     font-size: 1rem;
+  }
+
+  .book-month-btn {
+    width: 44px;
+    height: 44px;
+    font-size: 1rem;
+  }
+
+  .book-weekday {
+    font-size: 0.8rem;
+  }
+
+  .book-day-cell {
+    min-height: 44px;
+    font-size: 0.95rem;
+  }
+
+  .book-pricing-list li {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
+
+@media (max-width: 576px) {
+  .home-page,
+  .book-page,
+  .gallery-page {
+    padding-left: 0.75rem;
+    padding-right: 0.75rem;
+  }
+
+  .home-visit-contact,
+  .home-included-card {
+    padding: 1rem;
+  }
+
+  .book-calendar-grid {
+    gap: 4px;
+  }
+
+  .book-weekday {
+    font-size: 0.75rem;
+  }
+
+  .book-day-cell {
+    min-height: 40px;
+    height: 40px;
+    border-radius: 6px;
   }
 }
 
@@ -1194,4 +1337,109 @@ nav ul li a:hover {
 
 .reservation-modal-actions button:hover {
   opacity: 0.9;
+}
+
+/* Shared dashboard responsive styles */
+.dashboard-page {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 0 20px 20px;
+  box-sizing: border-box;
+}
+
+.dashboard-table-wrap {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.dashboard-table {
+  width: 100%;
+  border-collapse: collapse;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+  min-width: 560px;
+}
+
+.dashboard-table th,
+.dashboard-table td {
+  padding: 10px 8px;
+}
+
+.mobile-reservation-cards {
+  display: none;
+}
+
+.mobile-reservation-card {
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  padding: 0.85rem;
+  background: #fff;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
+}
+
+.mobile-reservation-card p {
+  margin: 0.35rem 0;
+}
+
+.mobile-card-actions {
+  margin-top: 0.6rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+
+.mobile-card-actions button {
+  border: none;
+  border-radius: 6px;
+  padding: 8px 10px;
+  color: #fff;
+}
+
+.admin-filter-bar {
+  box-sizing: border-box;
+}
+
+.admin-filter-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.admin-filter-input {
+  min-height: 34px;
+}
+
+@media (max-width: 768px) {
+  .dashboard-page {
+    padding: 0 12px 18px;
+  }
+
+  .dashboard-table {
+    min-width: 640px;
+  }
+
+  .admin-filter-bar {
+    flex-direction: column;
+    align-items: stretch !important;
+    gap: 8px !important;
+  }
+
+  .admin-filter-label {
+    width: 100%;
+  }
+
+  .admin-filter-input {
+    width: 100%;
+  }
+}
+
+@media (max-width: 576px) {
+  .dashboard-table-wrap {
+    display: none;
+  }
+
+  .mobile-reservation-cards {
+    display: grid;
+    gap: 10px;
+  }
 }

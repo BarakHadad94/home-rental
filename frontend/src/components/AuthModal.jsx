@@ -12,7 +12,14 @@ export default function AuthModal({ onClose, onLogin, isAdmin = false }) {
   });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [isMobile, setIsMobile] = useState(window.innerWidth <= 576);
   const navigate = useNavigate();
+
+  React.useEffect(() => {
+    const onResize = () => setIsMobile(window.innerWidth <= 576);
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, []);
 
   const handleChange = (e) => {
     setFormData({
@@ -134,9 +141,9 @@ export default function AuthModal({ onClose, onLogin, isAdmin = false }) {
     }}>
       <div style={{
         backgroundColor: 'white',
-        padding: '30px',
+        padding: isMobile ? '18px' : '30px',
         borderRadius: '8px',
-        width: '400px',
+        width: isMobile ? '94vw' : '400px',
         maxWidth: '90%'
       }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '20px' }}>
@@ -147,6 +154,8 @@ export default function AuthModal({ onClose, onLogin, isAdmin = false }) {
               background: 'none',
               border: 'none',
               fontSize: '24px',
+              minWidth: '44px',
+              minHeight: '44px',
               cursor: 'pointer',
               color: '#666'
             }}
@@ -161,7 +170,7 @@ export default function AuthModal({ onClose, onLogin, isAdmin = false }) {
               onClick={() => setIsSignUp(false)}
               style={{
                 flex: 1,
-                padding: '8px',
+                padding: isMobile ? '12px 8px' : '8px',
                 backgroundColor: !isSignUp ? '#4CAF50' : '#e0e0e0',
                 color: !isSignUp ? 'white' : '#333',
                 border: 'none',
@@ -175,7 +184,7 @@ export default function AuthModal({ onClose, onLogin, isAdmin = false }) {
               onClick={() => setIsSignUp(true)}
               style={{
                 flex: 1,
-                padding: '8px',
+                padding: isMobile ? '12px 8px' : '8px',
                 backgroundColor: isSignUp ? '#4CAF50' : '#e0e0e0',
                 color: isSignUp ? 'white' : '#333',
                 border: 'none',

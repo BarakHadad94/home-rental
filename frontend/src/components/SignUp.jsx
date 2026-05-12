@@ -66,7 +66,7 @@ export default function SignUp({ onSignUp }) {
   };
 
   return (
-    <div style={{ maxWidth: 400, margin: 'auto', padding: 20 }}>
+    <div style={{ maxWidth: 400, width: '94vw', margin: 'auto', padding: 20, boxSizing: 'border-box' }}>
       <h2>Sign Up</h2>
       <form onSubmit={handleSubmit}>
         <div style={{ marginBottom: 15 }}>
