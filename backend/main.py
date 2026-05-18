@@ -130,13 +130,13 @@ def get_apartment_info(db: Session = Depends(get_db)):
             print("DEBUG: No existing settings found. Creating default settings.")
             # Create default settings if none exist
             default_settings = Settings(
-                apartment_name="Sirbnb Apartment",
+                apartment_name="Airbnb Apartment",
                 description="A cozy apartment with beautiful views",
                 price_per_night=500,
                 max_guests=6,
                 contact_email="yehudahadad12@gmail.com",
-                contact_phone="+972 50-123-4567",
-                address="Tel Aviv, Israel",
+                contact_phone="+972505547699",
+                address="Hagiva 3, Jerusalem",
                 check_in_time="14:00",
                 check_out_time="11:00"
             )
